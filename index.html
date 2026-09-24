@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>과학 탐구 보고서 - 제로 콜라와 혈당</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<!-- 교사 실시간 피드백 알림창 (기본 숨김 상태) -->
+    <div id="feedback-toast" style="display:none; position:fixed; bottom:30px; right:30px; background-color:#3498db; color:white; padding:20px 25px; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.2); z-index:9999; max-width:350px; line-height:1.5;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.3); padding-bottom:10px; margin-bottom:10px;">
+            <strong style="font-size:16px;">👨‍🏫 선생님의 피드백 도착!</strong>
+            <button onclick="document.getElementById('feedback-toast').style.display='none'" style="background:none; border:none; color:white; font-size:20px; cursor:pointer; padding:0;">✖</button>
+        </div>
+        <div id="feedback-message" style="font-size:15px; word-break:keep-all;"></div>
+    </div>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>과학 탐구 보고서: 제로 콜라와 혈당 변화</h1>
+            <div class="group-select">
+                <label for="group-num">우리 모둠: </label>
+                <select id="group-num">
+                    <option value="1">1조</option>
+                    <option value="2">2조</option>
+                    <option value="3">3조</option>
+                    <option value="4">4조</option>
+                    <option value="5">5조</option>
+                    <option value="6">6조</option>
+                    <option value="7">7조</option>
+                    <option value="8">8조</option>
+                    <option value="9">9조</option>
+                    <option value="10">10조</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="step-indicator">
+            <div class="dots">
+                <span class="step-dot active" id="dot-1">1</span>
+                <span class="step-dot" id="dot-2">2</span>
+                <span class="step-dot" id="dot-3">3</span>
+            </div>
+            <button id="overview-btn" class="overview-btn">전체 보기</button>
+        </div>
+
+        <section class="card step active" id="step-1">
+            <h2>1. 탐구 설계</h2>
+            <div class="variables">
+                <h3>변인 통제 (실험 조건 설정하기)</h3>
+                <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 15px;">탐구에서 다르게 해야 할 조건(조작 변인)과 같게 유지해야 할 조건(통제 변인)을 판단하고, 구체적인 값을 설정해 보세요.</p>
+
+                <div class="variable-table" style="background-color: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 25px;">
+                    <!-- 테이블 헤더 -->
+                    <div style="display: flex; background-color: #e2e8f0; padding: 12px 15px; font-weight: bold; text-align: center; color: #4a5568;">
+                        <div style="flex: 1;">변인 (조건)</div>
+                        <div style="flex: 1.5;">어떻게 할까요?</div>
+                        <div style="flex: 2;">구체적인 설정</div>
+                    </div>
+
+                    <!-- 변인 1: 음료의 종류 -->
+                    <div style="display: flex; padding: 15px; border-bottom: 1px solid #e2e8f0; align-items: center;">
+                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">음료의 종류</div>
+                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
+                            <label><input type="radio" name="var-drink" value="manipulated" checked> 다르게 (조작 변인)</label>
+                            <label><input type="radio" name="var-drink" value="controlled"> 같게 (통제 변인)</label>
+                        </div>
+                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #718096;">대조군(기준):</span> 
+                                <select id="ctrl-drink" style="width: 140px; padding: 8px;">
+                                    <option value="regular">일반 콜라</option><option value="water">물</option><option value="zero">제로 콜라</option>
+                                </select>
+                            </div>
+                            <div id="exp-drink-container" style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
+                                <select id="exp-drink" style="width: 140px; padding: 8px;">
+                                    <option value="zero">제로 콜라</option><option value="regular">일반 콜라</option><option value="water">물</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 변인 2: 섭취 전 상태 -->
+                    <div style="display: flex; padding: 15px; border-bottom: 1px solid #e2e8f0; align-items: center;">
+                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">섭취 전 상태</div>
+                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
+                            <label><input type="radio" name="var-state" value="manipulated"> 다르게 (조작 변인)</label>
+                            <label><input type="radio" name="var-state" value="controlled" checked> 같게 (통제 변인)</label>
+                        </div>
+                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #718096;" class="ctrl-label">대조군(기준):</span> 
+                                <select id="ctrl-state" style="width: 140px; padding: 8px;">
+                                    <option value="fasting">공복 (식후 8시간)</option><option value="after-meal">식후 1시간</option>
+                                </select>
+                            </div>
+                            <div id="exp-state-container" style="display: none; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
+                                <select id="exp-state" style="width: 140px; padding: 8px;">
+                                    <option value="after-meal">식후 1시간</option><option value="fasting">공복 (식후 8시간)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 변인 3: 섭취량 -->
+                    <div style="display: flex; padding: 15px; border-bottom: 1px solid #e2e8f0; align-items: center;">
+                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">섭취량</div>
+                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
+                            <label><input type="radio" name="var-amount" value="manipulated"> 다르게 (조작 변인)</label>
+                            <label><input type="radio" name="var-amount" value="controlled" checked> 같게 (통제 변인)</label>
+                        </div>
+                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #718096;" class="ctrl-label">대조군(기준):</span> 
+                                <select id="ctrl-amount" style="width: 140px; padding: 8px;">
+                                    <option value="250">250ml (캔)</option><option value="500">500ml (페트병)</option>
+                                </select>
+                            </div>
+                            <div id="exp-amount-container" style="display: none; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
+                                <select id="exp-amount" style="width: 140px; padding: 8px;">
+                                    <option value="500">500ml (페트병)</option><option value="250">250ml (캔)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 변인 4: 섭취 후 활동 -->
+                    <div style="display: flex; padding: 15px; align-items: center;">
+                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">섭취 후 활동</div>
+                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
+                            <label><input type="radio" name="var-activity" value="manipulated"> 다르게 (조작 변인)</label>
+                            <label><input type="radio" name="var-activity" value="controlled" checked> 같게 (통제 변인)</label>
+                        </div>
+                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #718096;" class="ctrl-label">대조군(기준):</span> 
+                                <select id="ctrl-activity" style="width: 140px; padding: 8px;">
+                                    <option value="rest">휴식하기</option><option value="walk">산책하기</option>
+                                </select>
+                            </div>
+                            <div id="exp-activity-container" style="display: none; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
+                                <select id="exp-activity" style="width: 140px; padding: 8px;">
+                                    <option value="walk">산책하기</option><option value="rest">휴식하기</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hypothesis">
+                <h3>가설 설정</h3>
+                <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 15px;">위에서 설정한 변인들을 바탕으로 탐구 가설을 완성해 봅시다.</p>
+                <p style="background-color: #f8fafc; padding: 20px; border-radius: 16px; line-height: 2.5;">
+                    만약 통제 변인인 <input type="text" id="hypo-state" placeholder="예: 공복, 250ml, 휴식" style="width: 250px;"> 상태에서<br>
+                    조작 변인으로 <input type="text" id="hypo-ctrl" placeholder="예: 일반 콜라" style="width: 150px;"> 대신 
+                    <input type="text" id="hypo-exp" placeholder="예: 제로 콜라" style="width: 150px;">을(를) 마신다면,<br>
+                    혈당은 <input type="text" id="hypo-result" placeholder="예측 (예: 더 적게 오를)" style="width: 200px;"> 것이다.
+                </p>
+            </div>
+
+            <button id="submit-step1-btn" class="submit-btn" style="background-color: #f39c12; margin-top: 20px; box-shadow: 0 6px 16px rgba(243, 156, 18, 0.25);">📝 1차시 설계 결과 전송하기</button>
+
+            <div class="nav-buttons">
+                <div></div>
+                <button class="nav-btn next-btn" id="next-1">다음 단계</button>
+            </div>
+        </section>
+
+        <section class="card step" id="step-2">
+            <h2>2. 가상 실험 및 데이터 처리</h2>
+            
+            <div class="simulation-dashboard" style="background-color: #f8fafc; padding: 20px; border-radius: 16px; margin-bottom: 20px;">
+                <!-- 선택된 변인 정보 표시 영역 -->
+                <div id="selected-info" style="background-color: #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 15px; text-align: center; line-height: 1.6;">
+                    <div><strong style="color: #2c3e50;">[대조군 조건]</strong> <span id="info-ctrl">설정된 조건이 없습니다.</span></div>
+                    <div><strong style="color: #e74c3c;">[실험군 조건]</strong> <span id="info-exp">설정된 조건이 없습니다.</span></div>
+                </div>
+
+                <div class="target-select" style="text-align: center; margin-bottom: 20px;">
+                    <label style="font-weight: bold; margin-right: 15px;">측정할 대상 선택:</label>
+                    <input type="radio" name="sim-target" value="ctrl" id="sim-ctrl" checked><label for="sim-ctrl" style="cursor: pointer;">대조군</label>
+                    <input type="radio" name="sim-target" value="exp" id="sim-exp" style="margin-left: 15px; cursor: pointer;"><label for="sim-exp" style="cursor: pointer;">실험군</label>
+                </div>
+                
+                <!-- 현실적인 혈당 측정기 기기 UI -->
+                <div class="glucometer-container" style="display: flex; flex-direction: column; align-items: center; margin-bottom: 10px;">
+                    <div class="device-body">
+                        <div class="device-brand">CareSens-Sim</div>
+                        <div class="device-screen">
+                            <div class="timer-display" id="sim-time">0분 경과 시점</div>
+                            <div class="screen-value" id="sim-screen">--<span class="unit">mg/dL</span></div>
+                            <div class="status-msg" id="sim-status">시험지를 삽입하세요</div>
+                        </div>
+                        <div class="device-buttons">
+                            <button class="device-btn"></button>
+                            <button class="device-btn"></button>
+                        </div>
+                        <div class="strip-slot"></div>
+                    </div>
+                    <button id="measure-btn" class="primary-btn" style="margin-top: 20px; width: 280px; font-size: 16px;">🩸 채혈 및 시험지 삽입하기</button>
+                    <p style="margin-top: 15px; font-size: 14px; color: #7f8c8d;">기기 화면에 표시된 수치를 아래 표에 기록하세요.</p>
+                </div>
+            </div>
+            
+            <h3>시간별 혈당 수치 기록표</h3>
+            <div class="table-responsive">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            <th>0분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
+                            <th>30분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
+                            <th>60분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
+                            <th>90분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
+                            <th>120분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="font-weight:bold; background-color:#e2e8f0; color: #2c3e50;">대조군</td>
+                            <td><input type="number" class="data-input" id="c-time-0"></td>
+                            <td><input type="number" class="data-input" id="c-time-30"></td>
+                            <td><input type="number" class="data-input" id="c-time-60"></td>
+                            <td><input type="number" class="data-input" id="c-time-90"></td>
+                            <td><input type="number" class="data-input" id="c-time-120"></td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight:bold; background-color:#fdf2e9; color: #e74c3c;">실험군</td>
+                            <td><input type="number" class="data-input" id="e-time-0"></td>
+                            <td><input type="number" class="data-input" id="e-time-30"></td>
+                            <td><input type="number" class="data-input" id="e-time-60"></td>
+                            <td><input type="number" class="data-input" id="e-time-90"></td>
+                            <td><input type="number" class="data-input" id="e-time-120"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>데이터 시각화</h3>
+            <button id="draw-chart-btn" class="primary-btn">그래프로 변환하기</button>
+            <div class="chart-container">
+                <canvas id="resultChart"></canvas>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn prev-btn" id="prev-2">이전 단계</button>
+                <button class="nav-btn next-btn" id="next-2">다음 단계</button>
+            </div>
+        </section>
+
+        <section class="card step" id="step-3">
+            <h2>3. 결과 분석 및 결론 도출</h2>
+            
+            <div class="analysis-section">
+                <h3>자료 해석</h3>
+                <label>그래프의 경향성을 바탕으로 시간에 따른 혈당 변화를 설명해 봅시다.</label>
+                <textarea id="data-analysis" rows="3" placeholder="예: 공복에 제로 콜라를 마셨을 때, 30분 후 혈당이 약간 상승했지만 60분 이후 다시 원래 수치로 돌아왔다."></textarea>
+            </div>
+
+            <div class="validation">
+                <h3>가설 검증</h3>
+                <label>우리가 처음에 세운 가설은 맞았나요?</label>
+                <div style="margin-top: 10px; margin-bottom: 15px;">
+                    <button id="accept-btn" class="choice-btn">가설 수용</button>
+                    <button id="reject-btn" class="choice-btn">가설 기각</button>
+                </div>
+                
+                <div id="reject-section" class="hidden">
+                    <label>가설이 기각된 원인은 무엇이라고 생각하나요?</label>
+                    <textarea id="cause-analysis" rows="2"></textarea>
+                    
+                    <label>결과를 바탕으로 새로운 가설을 세워봅시다.</label>
+                    <textarea id="new-hypothesis" rows="2"></textarea>
+                </div>
+
+                <h3>결론 도출</h3>
+                <label>탐구 결과를 종합하여 최종 결론을 한 문장으로 정리해 봅시다.</label>
+                <textarea id="final-conclusion" rows="2"></textarea>
+            </div>
+
+            <div class="reflection">
+                <h3>오차 논의 및 확장</h3>
+                <label>이것이 가상 실험이 아닌 실제 사람을 대상으로 한 실험이었다면, 어떤 변수들 때문에 오차가 발생했을까요?</label>
+                <textarea id="error-discussion" rows="2"></textarea>
+                
+                <label>이 탐구를 통해 새롭게 생긴 의문점이나 더 알아보고 싶은 점을 적어봅시다.</label>
+                <textarea id="learning-point" rows="2"></textarea>
+            </div>
+
+            <div class="teacher-feedback hidden" id="feedback-area">
+                <h4>선생님 피드백</h4>
+                <p id="feedback-text">아직 도착한 피드백이 없습니다.</p>
+            </div>
+            
+            <div class="nav-buttons">
+                <button class="nav-btn prev-btn" id="prev-3">이전 단계</button>
+            </div>
+        </section>
+
+        <button id="submit-all-btn" class="submit-btn hidden">전체 결과 전송하기</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>

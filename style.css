@@ -1,0 +1,368 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+body {
+    font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+    background-color: #f4f7fb; /* 부드러운 배경색 */
+    color: #333;
+    margin: 0;
+    padding: 30px 20px;
+}
+
+.container {
+    max-width: 850px;
+    margin: 0 auto;
+}
+
+/* 헤더 및 공통 카드 스타일 (몽글몽글한 느낌 핵심) */
+header, .step-indicator, .card {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 24px; /* 둥근 모서리 */
+    margin-bottom: 24px;
+    box-shadow: 0 8px 24px rgba(149, 157, 165, 0.1); /* 부드러운 그림자 */
+    border: none;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+h1 {
+    font-size: 22px;
+    margin: 0;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 20px;
+    color: #3498db;
+    margin-top: 0;
+    margin-bottom: 25px;
+}
+
+h3 {
+    font-size: 17px;
+    color: #34495e;
+    margin-bottom: 15px;
+}
+
+/* 상단 단계 표시기 */
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+}
+
+.dots {
+    display: flex;
+    gap: 15px;
+}
+
+.step-dot {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    background-color: #e2e8f0;
+    color: #718096;
+    border-radius: 50%; /* 완전한 동그라미 */
+    text-align: center;
+    line-height: 36px;
+    font-weight: bold;
+    cursor: pointer; /* 클릭 가능한 커서 */
+    transition: all 0.3s ease;
+}
+
+.step-dot:hover {
+    background-color: #cbd5e0;
+}
+
+.step-dot.active {
+    background-color: #3498db;
+    color: white;
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+}
+
+/* 입력 폼 스타일 */
+.var-group {
+    margin-bottom: 18px;
+    background-color: #f8fafc;
+    padding: 15px 20px;
+    border-radius: 16px;
+}
+
+.var-group label {
+    margin-right: 20px;
+    cursor: pointer;
+}
+
+input[type="radio"] {
+    accent-color: #3498db;
+    margin-right: 6px;
+}
+
+input[type="text"], input[type="number"], textarea, select {
+    padding: 12px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 15px;
+    background-color: #fbfcff;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus, textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    background-color: #fff;
+}
+
+.hypothesis p {
+    font-size: 16px;
+    line-height: 2.2;
+    background-color: #f8fafc;
+    padding: 20px;
+    border-radius: 16px;
+}
+
+/* 버튼 스타일 (둥글고 귀여운 느낌) */
+button {
+    font-family: inherit;
+}
+
+.primary-btn, .choice-btn, .overview-btn, .nav-btn {
+    border: none;
+    padding: 12px 24px;
+    border-radius: 30px; /* 알약 형태의 둥근 버튼 */
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.primary-btn, .next-btn {
+    background-color: #3498db;
+    color: white;
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.25);
+}
+
+.primary-btn:hover, .next-btn:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+.prev-btn {
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+.prev-btn:hover {
+    background-color: #cbd5e0;
+}
+
+.overview-btn {
+    background-color: #94a3b8;
+    color: white;
+}
+
+.submit-btn {
+    width: 100%;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 18px;
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(46, 204, 113, 0.25);
+    transition: all 0.2s;
+}
+
+.submit-btn:hover {
+    background-color: #27ae60;
+    transform: translateY(-2px);
+}
+
+/* 표 스타일 부드럽게 */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+th, td {
+    border: 1px solid #e2e8f0;
+    padding: 15px;
+    text-align: center;
+}
+
+th {
+    background-color: #f8fafc;
+    color: #4a5568;
+}
+
+.sim-area {
+    background-color: #f0fdf4;
+    padding: 30px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 25px;
+    min-height: 120px;
+    border: 1px dashed #86efac;
+}
+
+/* 기타 유틸리티 */
+.step { display: none; }
+.step.active { display: block; animation: fadeIn 0.4s ease; }
+.hidden { display: none; }
+.nav-buttons { display: flex; justify-content: space-between; margin-top: 30px; padding-top: 20px; border-top: 1px dashed #e2e8f0; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 전역 박스 사이징 설정 (표 및 입력창 튀어나감 방지) */
+* {
+    box-sizing: border-box;
+}
+
+/* 2단계: 표 레이아웃 수정 */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+.data-input {
+    width: 100%;
+    min-width: 60px;
+    box-sizing: border-box;
+}
+
+/* 3단계: 말풍선(피드백) 및 텍스트 박스 디자인 수정 */
+textarea {
+    width: 100%;
+    resize: vertical;
+    margin-top: 8px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+.teacher-feedback {
+    background-color: #fffbeb;
+    padding: 20px;
+    border-radius: 0 16px 16px 16px; /* 자연스러운 말풍선 꼬리 형태 */
+    margin-top: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #f59e0b;
+    box-shadow: 0 2px 10px rgba(245, 158, 11, 0.1);
+}
+
+.teacher-feedback h4 {
+    margin-top: 0;
+    color: #b45309;
+    margin-bottom: 10px;
+}
+/* 1단계: 변인 통제 라디오 버튼 글자 줄바꿈 방지 */
+.variable-table label {
+    white-space: nowrap;
+}
+/* 혈당 측정기(Glucometer) 하드웨어 기기 디자인 */
+.device-body {
+    width: 220px;
+    background-color: #2c3e50;
+    border-radius: 30px 30px 15px 15px;
+    padding: 20px 20px 30px 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3), inset 0 2px 5px rgba(255,255,255,0.2);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.device-brand {
+    color: #bdc3c7;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.device-screen {
+    width: 100%;
+    background-color: #9cbca4; /* 클래식한 액정(LCD) 초록색 */
+    border: 5px solid #1a252f;
+    border-radius: 10px;
+    padding: 15px 10px;
+    text-align: right;
+    box-shadow: inset 0 3px 8px rgba(0,0,0,0.3);
+}
+
+.timer-display {
+    font-size: 13px;
+    color: #2c3e50;
+    margin-bottom: 5px;
+    text-align: left;
+    font-weight: bold;
+}
+
+.screen-value {
+    font-size: 42px;
+    font-weight: bold;
+    color: #111;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1;
+    margin: 5px 0;
+}
+
+.screen-value .unit {
+    font-size: 15px;
+    font-family: 'Pretendard', sans-serif;
+    margin-left: 5px;
+}
+
+.status-msg {
+    font-size: 12px;
+    color: #111;
+    margin-top: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.device-buttons {
+    display: flex;
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.device-btn {
+    width: 35px;
+    height: 12px;
+    background-color: #7f8c8d;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 3px 0 #1a252f;
+}
+
+.strip-slot {
+    width: 40px;
+    height: 8px;
+    background-color: #000;
+    border-radius: 5px;
+    position: absolute;
+    bottom: 10px;
+}
+.chart-container {
+    width: 100%;
+    height: 450px;
+    margin-bottom: 20px;
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+}
