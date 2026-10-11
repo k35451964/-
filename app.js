@@ -1,8 +1,16 @@
-// Supabase 초기화 (가장 위에 배치)
-const SUPABASE_URL = 'https://krmgbaefpoftggfcmnhs.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtybWdiYWVmcG9mdGdnZmNtbmhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNTMxMzMsImV4cCI6MjEwNTgyOTEzM30.TBzADNq8LqtHiwqfu9UrRAyuAciqVDXI7JqRE3dPgXU';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-// ==========================================
+// Firebase 초기화 (가장 위에 배치)
+const firebaseConfig = {
+  apiKey: "AIzaSyAif_DzuKrQP0Z6kdu3psF76uyEciQ8pQ0",
+  authDomain: "exp-simul.firebaseapp.com",
+  projectId: "exp-simul",
+  storageBucket: "exp-simul.firebasestorage.app",
+  messagingSenderId: "1080969991802",
+  appId: "1:1080969991802:web:21c0d50ec598d4b21e4dc3",
+  measurementId: "G-R61940GG7Q"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 // 1. 화면 이동 및 뷰 업데이트 로직
 // ==========================================
 let currentStep = 1;
@@ -405,8 +413,11 @@ if (submitStep1Btn) {
                 timestamp: new Date().toISOString()
             };
 
-            const { error } = await db.from('reports').insert([{ group_number: groupNum, report_data: payload }]);
-            if (error) throw error;
+            await db.collection('reports').add({
+    group_number: groupNum,
+    report_data: payload,
+    created_at: firebase.firestore.FieldValue.serverTimestamp()
+});
 
             alert(`${groupNum}조의 1차시 탐구 설계가 전송되었습니다! 화면을 통해 다른 조와 비교해 보세요.`);
             
@@ -489,9 +500,11 @@ if (submitAllBtn) {
                 timestamp: new Date().toISOString()
             };
 
-            const { error } = await db.from('reports').insert([{ group_number: groupNum, report_data: payload }]);
-            if (error) throw error;
-
+            await db.collection('reports').add({
+             group_number: groupNum,
+             report_data: payload,
+               created_at: firebase.firestore.FieldValue.serverTimestamp()
+            });
             alert(`${groupNum}조의 최종 탐구 보고서가 전송되었습니다! 수고하셨습니다.`);
             
             submitAllBtn.disabled = false;
@@ -505,26 +518,33 @@ if (submitAllBtn) {
     });
 }
 // ==========================================
-// 7. 실시간 교사 피드백 수신 로직
-// ==========================================
-db.channel('feedback-channel')
-  .on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'feedbacks' },
-    (payload) => {
-        const myGroup = document.getElementById('group-num').value;
-        // 새로 들어온 피드백의 조 번호가 현재 학생이 입력한 조 번호와 같으면 알림 띄우기
-        if (payload.new.group_number === myGroup && myGroup !== '') {
-            const toast = document.getElementById('feedback-toast');
-            document.getElementById('feedback-message').innerText = payload.new.message;
-            
-            toast.style.display = 'block';
-            
-            // 15초 뒤에 자동으로 팝업창 숨기기
-            setTimeout(() => { 
-                toast.style.display = 'none'; 
-            }, 15000);
-        }
-    }
-  )
-  .subscribe();
+let isFirstFeedbackLoad = true;
+
+db.collection('feedbacks')
+  .orderBy('created_at', 'desc')
+  .limit(1)
+  .onSnapshot((snapshot) => {
+      // 페이지 처음 로드 시 과거 피드백이 뜨는 것 방지
+      if (isFirstFeedbackLoad) {
+          isFirstFeedbackLoad = false;
+          return;
+      }
+
+      snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+              const data = change.doc.data();
+              const myGroup = document.getElementById('group-num').value;
+              
+              if (data.group_number === myGroup && myGroup !== '') {
+                  const toast = document.getElementById('feedback-toast');
+                  document.getElementById('feedback-message').innerText = data.message;
+                  
+                  toast.style.display = 'block';
+                  
+                  setTimeout(() => { 
+                      toast.style.display = 'none'; 
+                  }, 15000);
+              }
+          }
+      });
+  });

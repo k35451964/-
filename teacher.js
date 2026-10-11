@@ -1,7 +1,16 @@
-// Supabase 초기화 (app.js와 동일한 정보 입력)
-const SUPABASE_URL = 'https://krmgbaefpoftggfcmnhs.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtybWdiYWVmcG9mdGdnZmNtbmhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNTMxMzMsImV4cCI6MjEwNTgyOTEzM30.TBzADNq8LqtHiwqfu9UrRAyuAciqVDXI7JqRE3dPgXU';
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Firebase 초기화
+const firebaseConfig = {
+  apiKey: "AIzaSyAif_DzuKrQP0Z6kdu3psF76uyEciQ8pQ0",
+  authDomain: "exp-simul.firebaseapp.com",
+  projectId: "exp-simul",
+  storageBucket: "exp-simul.firebasestorage.app",
+  messagingSenderId: "1080969991802",
+  appId: "1:1080969991802:web:21c0d50ec598d4b21e4dc3",
+  measurementId: "G-R61940GG7Q"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 const dashboardGrid = document.getElementById('dashboard-grid');
 let allReports = [];
@@ -34,16 +43,30 @@ tabPhase1.addEventListener('click', () => { currentTab = 'phase1'; updateTabStyl
 tabPhase2.addEventListener('click', () => { currentTab = 'phase2'; updateTabStyles(); renderDashboard(); });
 tabLearning.addEventListener('click', () => { currentTab = 'learning'; updateTabStyles(); renderDashboard(); });
 
-// 2. 전체 데이터 불러오기
-async function loadReports() {
-    const { data, error } = await db.from('reports').select('*');
-    if (error) {
-        console.error('데이터 로드 실패:', error);
-        return;
-    }
-    allReports = data;
-    renderDashboard();
+// 2 & 7. 전체 데이터 불러오기 및 실시간 구독 통합
+function listenToReports() {
+    db.collection('reports')
+      .orderBy('created_at', 'asc')
+      .onSnapshot((snapshot) => {
+          allReports = [];
+          snapshot.forEach((doc) => {
+              const item = doc.data();
+              // 시간 데이터 변환 처리
+              const createdAt = item.created_at ? item.created_at.toDate().toISOString() : new Date().toISOString();
+              allReports.push({
+                  id: doc.id,
+                  report_data: item.report_data,
+                  created_at: createdAt
+              });
+          });
+          renderDashboard();
+      }, (error) => {
+          console.error('데이터 수신 실패:', error);
+      });
 }
+
+// 스크립트 실행 시 즉시 리스너 시작
+listenToReports();
 
 // 3. 데이터를 조별 순서로 정렬하고 화면에 그리기
 function renderDashboard() {
@@ -296,20 +319,7 @@ document.getElementById('modal-next-btn').addEventListener('click', () => {
     if (currentModalIndex < currentSortedData.length - 1) openModal(currentModalIndex + 1);
 });
 
-// 7. 실시간 데이터 구독
-db.channel('custom-all-channel')
-  .on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'reports' },
-    (payload) => {
-        allReports.push(payload.new);
-        renderDashboard(); 
-    }
-  )
-  .subscribe();
 
-// 페이지 로드 시 기존 데이터 렌더링
-loadReports();
 // 8. 피드백 전송 로직
 const sendFeedbackBtn = document.getElementById('send-feedback-btn');
 if (sendFeedbackBtn) {
@@ -328,17 +338,17 @@ if (sendFeedbackBtn) {
         sendFeedbackBtn.disabled = true;
         sendFeedbackBtn.innerText = '전송 중...';
 
-        const { error } = await db.from('feedbacks').insert([{ 
-            group_number: targetGroup, 
-            message: message 
-        }]);
-
-        if (error) {
-            console.error(error);
-            alert('피드백 전송에 실패했습니다.');
-        } else {
+        try {
+            await db.collection('feedbacks').add({ 
+                group_number: targetGroup, 
+                message: message,
+                created_at: firebase.firestore.FieldValue.serverTimestamp()
+            });
             alert(`${targetGroup}조에 피드백이 전송되었습니다!`);
             inputEl.value = ''; // 입력칸 비우기
+        } catch (error) {
+            console.error(error);
+            alert('피드백 전송에 실패했습니다.');
         }
         
         sendFeedbackBtn.disabled = false;
