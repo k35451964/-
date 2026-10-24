@@ -3,313 +3,372 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>과학 탐구 보고서 - 제로 콜라와 혈당</title>
+    <title>웹 기반 과학 탐구 프로젝트</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="devices.css">
 </head>
-
-<!-- 교사 실시간 피드백 알림창 (기본 숨김 상태) -->
-    <div id="feedback-toast" style="display:none; position:fixed; bottom:30px; right:30px; background-color:#3498db; color:white; padding:20px 25px; border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,0.2); z-index:9999; max-width:350px; line-height:1.5;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.3); padding-bottom:10px; margin-bottom:10px;">
-            <strong style="font-size:16px;">👨‍🏫 선생님의 피드백 도착!</strong>
-            <button onclick="document.getElementById('feedback-toast').style.display='none'" style="background:none; border:none; color:white; font-size:20px; cursor:pointer; padding:0;">✖</button>
-        </div>
-        <div id="feedback-message" style="font-size:15px; word-break:keep-all;"></div>
-    </div>
-
 <body>
-    <div class="container">
-        <header>
-            <h1>과학 탐구 보고서: 제로 콜라와 혈당 변화</h1>
-            <div class="group-select">
-                <label for="group-num">우리 모둠: </label>
-                <select id="group-num">
-                    <option value="1">1조</option>
-                    <option value="2">2조</option>
-                    <option value="3">3조</option>
-                    <option value="4">4조</option>
-                    <option value="5">5조</option>
-                    <option value="6">6조</option>
-                    <option value="7">7조</option>
-                    <option value="8">8조</option>
-                    <option value="9">9조</option>
-                    <option value="10">10조</option>
-                </select>
-            </div>
-        </header>
 
-        <div class="step-indicator">
-            <div class="dots">
-                <span class="step-dot active" id="dot-1">1</span>
-                <span class="step-dot" id="dot-2">2</span>
-                <span class="step-dot" id="dot-3">3</span>
-            </div>
-            <button id="overview-btn" class="overview-btn">전체 보기</button>
+<!-- 상단 바: 모둠 정보, 접속 인원, 저장 상태 -->
+<header class="topbar" id="topbar" hidden>
+    <div class="topbar-team">
+        <span id="team-badge"></span>
+        <span id="theme-badge" class="muted"></span>
+    </div>
+    <div class="topbar-right">
+        <span id="online-badge" class="pill" title="지금 이 모둠으로 접속한 기기 수"></span>
+        <span id="save-status" class="pill"></span>
+        <button class="link-btn" onclick="leaveTeam()">나가기</button>
+    </div>
+</header>
+
+<!-- 진행 단계 표시 -->
+<nav class="stepper" id="stepper" hidden></nav>
+
+<div class="container">
+
+    <!-- 입장: 학년·반·조 선택 -->
+    <section id="intro-screen" class="screen active">
+        <h1>🔍 웹 기반 과학 탐구 프로젝트</h1>
+        <p class="lead">가상 실험 시뮬레이터로 과학적 탐구의 과정을 모둠원과 함께 직접 설계해 보자.</p>
+
+        <div class="intro-form">
+            <label class="field">
+                <span>학년</span>
+                <select id="grade-select" onchange="onGradeChange()"></select>
+            </label>
+            <label class="field">
+                <span>반</span>
+                <select id="class-select" onchange="onClassChange()"></select>
+            </label>
+            <label class="field">
+                <span>모둠</span>
+                <select id="team-select"></select>
+            </label>
+        </div>
+        <p id="intro-msg" class="intro-msg"></p>
+        <button class="btn btn-primary btn-block" id="enter-btn" onclick="enterTeam()">탐구 시작하기</button>
+        <p class="hint center">같은 모둠을 고르면 모둠원 모두의 화면이 실시간으로 함께 바뀌어요.</p>
+    </section>
+
+    <!-- 테마 선택 -->
+    <section id="theme-screen" class="screen">
+        <h2>탐구할 미스터리를 골라 보자</h2>
+        <p class="lead">모둠에서 한 명이 고르면 모둠원 모두에게 적용된다.</p>
+        <div id="theme-cards" class="theme-cards"></div>
+        <button class="btn btn-ghost" id="theme-back-btn" onclick="goToStage(1)" hidden>← 돌아가기</button>
+    </section>
+
+    <!-- 1. 문제 인식 -->
+    <section id="story-screen" class="screen">
+        <h2>1. 문제 인식</h2>
+        <div class="story-box">
+            <h3 id="story-title"></h3>
+            <div id="story-visual"></div>
+            <p id="story-text" class="story-text"></p>
         </div>
 
-        <section class="card step active" id="step-1">
-            <h2>1. 탐구 설계</h2>
-            <div class="variables">
-                <h3>변인 통제 (실험 조건 설정하기)</h3>
-                <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 15px;">탐구에서 다르게 해야 할 조건(조작 변인)과 같게 유지해야 할 조건(통제 변인)을 판단하고, 구체적인 값을 설정해 보세요.</p>
+        <div class="card soft">
+            <label class="field">
+                <span class="field-title">🔎 이야기 속에서 우리 모둠이 해결하고 싶은 미스터리(탐구 문제)는?</span>
+                <textarea id="problem-input" data-key="problem" rows="2" placeholder="예: ○○하면 ○○이(가) 어떻게 달라질까?"></textarea>
+            </label>
+        </div>
 
-                <div class="variable-table" style="background-color: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 25px;">
-                    <!-- 테이블 헤더 -->
-                    <div style="display: flex; background-color: #e2e8f0; padding: 12px 15px; font-weight: bold; text-align: center; color: #4a5568;">
-                        <div style="flex: 1;">변인 (조건)</div>
-                        <div style="flex: 1.5;">어떻게 할까요?</div>
-                        <div style="flex: 2;">구체적인 설정</div>
-                    </div>
+        <div class="action-row">
+            <button class="btn btn-ghost" id="change-theme-btn" onclick="showThemeScreen()">다른 테마 고르기</button>
+            <button class="btn btn-primary" onclick="advance(2)">💡 탐구 문제 파악 완료! 가설 세우기</button>
+        </div>
+    </section>
 
-                    <!-- 변인 1: 음료의 종류 -->
-                    <div style="display: flex; padding: 15px; border-bottom: 1px solid #e2e8f0; align-items: center;">
-                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">음료의 종류</div>
-                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
-                            <label><input type="radio" name="var-drink" value="manipulated" checked> 다르게 (조작 변인)</label>
-                            <label><input type="radio" name="var-drink" value="controlled"> 같게 (통제 변인)</label>
-                        </div>
-                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #718096;">대조군(기준):</span> 
-                                <select id="ctrl-drink" style="width: 140px; padding: 8px;">
-                                    <option value="regular">일반 콜라</option><option value="water">물</option><option value="zero">제로 콜라</option>
-                                </select>
-                            </div>
-                            <div id="exp-drink-container" style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
-                                <select id="exp-drink" style="width: 140px; padding: 8px;">
-                                    <option value="zero">제로 콜라</option><option value="regular">일반 콜라</option><option value="water">물</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+    <!-- 2. 탐구 설계 (변인 통제 + 가설) -->
+    <section id="hypothesis-screen" class="screen">
+        <h2>2. 탐구 설계 (변인 통제)</h2>
+        <div id="design-lock" class="notice notice-lock" hidden>
+            🔒 측정이 시작되어 설계가 잠겼어요. 설계를 바꾸려면 측정 기록을 지우고 다시 해야 해요.
+            <button class="btn btn-small btn-ghost" onclick="resetDesign()">설계 다시 하기</button>
+        </div>
 
-                    <!-- 변인 2: 섭취 전 상태 -->
-                    <div style="display: flex; padding: 15px; border-bottom: 1px solid #e2e8f0; align-items: center;">
-                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">섭취 전 상태</div>
-                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
-                            <label><input type="radio" name="var-state" value="manipulated"> 다르게 (조작 변인)</label>
-                            <label><input type="radio" name="var-state" value="controlled" checked> 같게 (통제 변인)</label>
-                        </div>
-                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #718096;" class="ctrl-label">대조군(기준):</span> 
-                                <select id="ctrl-state" style="width: 140px; padding: 8px;">
-                                    <option value="fasting">공복 (식후 8시간)</option><option value="after-meal">식후 1시간</option>
-                                </select>
-                            </div>
-                            <div id="exp-state-container" style="display: none; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
-                                <select id="exp-state" style="width: 140px; padding: 8px;">
-                                    <option value="after-meal">식후 1시간</option><option value="fasting">공복 (식후 8시간)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+        <p class="hint">각 변인을 대조군과 실험군에서 <b>다르게(조작)</b> 할지 <b>같게(통제)</b> 할지 정해 보자.</p>
+        <div class="variable-table" id="dynamic-var-table"></div>
+        <div id="design-check" class="design-check"></div>
 
-                    <!-- 변인 3: 섭취량 -->
-                    <div style="display: flex; padding: 15px; border-bottom: 1px solid #e2e8f0; align-items: center;">
-                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">섭취량</div>
-                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
-                            <label><input type="radio" name="var-amount" value="manipulated"> 다르게 (조작 변인)</label>
-                            <label><input type="radio" name="var-amount" value="controlled" checked> 같게 (통제 변인)</label>
-                        </div>
-                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #718096;" class="ctrl-label">대조군(기준):</span> 
-                                <select id="ctrl-amount" style="width: 140px; padding: 8px;">
-                                    <option value="250">250ml (캔)</option><option value="500">500ml (페트병)</option>
-                                </select>
-                            </div>
-                            <div id="exp-amount-container" style="display: none; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
-                                <select id="exp-amount" style="width: 140px; padding: 8px;">
-                                    <option value="500">500ml (페트병)</option><option value="250">250ml (캔)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+        <h3 class="section-title">가설 설정</h3>
+        <p class="hint">위에서 설정한 변인을 바탕으로 탐구 가설을 완성해 보자.</p>
+        <div class="hypothesis-box">
+            <div class="hypo-row">
+                <span class="hypo-label">만약 통제 변인인</span>
+                <input type="text" id="hypo-control" data-key="hypo.control" class="hypo-wide">
+                <span>상태에서</span>
+            </div>
+            <div class="hypo-row">
+                <span class="hypo-label">조작 변인으로</span>
+                <input type="text" id="hypo-manipulated-ctrl" data-key="hypo.mctrl">
+                <span>대신</span>
+                <input type="text" id="hypo-manipulated-exp" data-key="hypo.mexp">
+                <span>을(를) 적용한다면,</span>
+            </div>
+            <div class="hypo-row">
+                <span class="hypo-label">결과는</span>
+                <input type="text" id="hypo-predict" data-key="hypo.predict" class="hypo-wide">
+                <span>것이다.</span>
+            </div>
+        </div>
 
-                    <!-- 변인 4: 섭취 후 활동 -->
-                    <div style="display: flex; padding: 15px; align-items: center;">
-                        <div style="flex: 1; font-weight: bold; color: #2c3e50;">섭취 후 활동</div>
-                        <div style="flex: 1.5; display: flex; justify-content: space-around;">
-                            <label><input type="radio" name="var-activity" value="manipulated"> 다르게 (조작 변인)</label>
-                            <label><input type="radio" name="var-activity" value="controlled" checked> 같게 (통제 변인)</label>
-                        </div>
-                        <div style="flex: 2; display: flex; gap: 10px; flex-direction: column;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #718096;" class="ctrl-label">대조군(기준):</span> 
-                                <select id="ctrl-activity" style="width: 140px; padding: 8px;">
-                                    <option value="rest">휴식하기</option><option value="walk">산책하기</option>
-                                </select>
-                            </div>
-                            <div id="exp-activity-container" style="display: none; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 14px; color: #e74c3c; font-weight: bold;">실험군(비교):</span> 
-                                <select id="exp-activity" style="width: 140px; padding: 8px;">
-                                    <option value="walk">산책하기</option><option value="rest">휴식하기</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+        <button id="submit-s1-btn" class="btn btn-orange btn-block" onclick="submitDesign()">📝 설계 결과 전송하기</button>
+        <div class="next-step-container">
+            <button id="next-step-btn" class="btn btn-primary" onclick="advance(3)" disabled>다음 단계: 실험하기 →</button>
+        </div>
+    </section>
+
+    <!-- 3. 가상 실험 및 데이터 수집 + 1차 시각화 -->
+    <section id="simulation-screen" class="screen">
+        <h2>3. 가상 실험 및 데이터 수집</h2>
+        <div id="sim-design-warning" class="notice notice-warn" hidden>
+            설계 결과를 먼저 전송해야 측정할 수 있어요.
+            <button class="btn btn-small btn-ghost" onclick="goToStage(2)">설계로 돌아가기</button>
+        </div>
+
+        <div id="sim-conditions" class="sim-conditions"></div>
+
+        <div class="measure-container">
+            <div class="measure-target">
+                측정할 대상:
+                <label><input type="radio" name="measure-target" value="ctrl" checked onchange="setMeasureTarget(this.value)"> 대조군</label>
+                <label><input type="radio" name="measure-target" value="exp" onchange="setMeasureTarget(this.value)"> 실험군</label>
+            </div>
+            <div id="dynamic-device-area"></div>
+            <div class="measure-buttons">
+                <button id="measure-btn" class="btn btn-primary btn-round" onclick="measureData()"></button>
+                <button id="mem-btn" class="btn btn-ghost btn-round" onclick="showMemory()" title="이전에 측정한 값을 다시 보기">MEM 기록 보기</button>
+            </div>
+            <p class="hint center">기기 화면에 표시된 수치를 아래 표에 <b>직접 기록</b>하자.</p>
+        </div>
+
+        <h3 class="section-title" id="table-title">측정 결과 기록표</h3>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead><tr id="data-head"></tr></thead>
+                <tbody>
+                    <tr id="data-row-c"></tr>
+                    <tr id="data-row-e"></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="chart1-section" class="chart-section">
+            <h3 class="section-title">1차 시각화: 로우 데이터 (전체 흐름 파악)</h3>
+            <p class="hint">시간에 따른 전체 데이터의 변화를 가장 잘 보여 주는 그래프를 골라 보자.</p>
+            <div class="chart-type-container" data-kind="1">
+                <button class="chart-btn" data-type="line" onclick="chooseChart(1, 'line')">📈 선 그래프</button>
+                <button class="chart-btn" data-type="bar" onclick="chooseChart(1, 'bar')">📊 막대그래프</button>
+                <button class="chart-btn" data-type="pie" onclick="chooseChart(1, 'pie')">🍕 원그래프</button>
+                <button class="chart-btn" data-type="scatter" onclick="chooseChart(1, 'scatter')">✨ 분산형 그래프</button>
+            </div>
+            <div class="canvas-container" id="chart-area-1" hidden><canvas id="resultChart1"></canvas></div>
+            <p class="chart-note" id="chart-note-1"></p>
+
+            <div class="reason-box">
+                <p class="reason-q">이 그래프를 1차 그래프로 선택한 이유는 무엇인가?</p>
+                <div class="reason-sentence">
+                    "우리 조가 수집한 데이터는
+                    <select id="reason1-1" data-key="reason1.1">
+                        <option value="">-- 데이터 특징 선택 --</option>
+                        <option value="시간에 따른 연속적인 변화 흐름">시간에 따른 연속적인 변화 흐름</option>
+                        <option value="각 시간대별 단순 크기 비교">각 시간대별 단순 크기 비교</option>
+                        <option value="전체에서 차지하는 특정 시점의 비율">전체에서 차지하는 특정 시점의 비율</option>
+                        <option value="두 값 사이의 관계와 분포">두 값 사이의 관계와 분포</option>
+                    </select>
+                    을(를) 파악하는 것이 중요하므로, 이를 가장 잘 표현하는
+                    <select id="reason1-2" data-key="reason1.2">
+                        <option value="">-- 그래프 종류 선택 --</option>
+                        <option value="선 그래프">선 그래프</option>
+                        <option value="막대그래프">막대그래프</option>
+                        <option value="원그래프">원그래프</option>
+                        <option value="분산형 그래프">분산형 그래프</option>
+                    </select>
+                    를(을) 선택했다."
                 </div>
             </div>
+        </div>
 
-            <div class="hypothesis">
-                <h3>가설 설정</h3>
-                <p style="font-size: 14px; color: #7f8c8d; margin-bottom: 15px;">위에서 설정한 변인들을 바탕으로 탐구 가설을 완성해 봅시다.</p>
-                <p style="background-color: #f8fafc; padding: 20px; border-radius: 16px; line-height: 2.5;">
-                    만약 통제 변인인 <input type="text" id="hypo-state" placeholder="예: 공복, 250ml, 휴식" style="width: 250px;"> 상태에서<br>
-                    조작 변인으로 <input type="text" id="hypo-ctrl" placeholder="예: 일반 콜라" style="width: 150px;"> 대신 
-                    <input type="text" id="hypo-exp" placeholder="예: 제로 콜라" style="width: 150px;">을(를) 마신다면,<br>
-                    혈당은 <input type="text" id="hypo-result" placeholder="예측 (예: 더 적게 오를)" style="width: 200px;"> 것이다.
-                </p>
+        <div class="next-step-container">
+            <button class="btn btn-primary" onclick="finishExperiment()">다음 단계: 데이터 분석하기 →</button>
+        </div>
+    </section>
+
+    <!-- 4. 데이터 분석 + 2차 시각화 + 가설 검증 -->
+    <section id="analysis-screen" class="screen">
+        <h2>4. 데이터 분석 및 가설 검증</h2>
+
+        <details class="card soft ref-chart" open>
+            <summary>📈 우리 조의 1차 그래프 다시 보기</summary>
+            <div class="canvas-container small" id="ref-chart-area"><canvas id="refChart1"></canvas></div>
+            <p class="hint" id="ref-chart-empty" hidden>아직 1차 그래프를 그리지 않았어요.</p>
+        </details>
+
+        <!-- AI 데이터 분석 어시스턴트 -->
+        <div id="ai-section" class="ai-section">
+            <h3>🤖 AI 데이터 분석 어시스턴트</h3>
+            <p class="hint">로우 데이터에서 핵심 결론을 끌어내기 위해 데이터를 가공해 보자. AI에게 계산을 부탁할 수 있다.</p>
+            <div class="ai-prompts">
+                <button class="ai-prompt-btn" onclick="fillAIPrompt('대조군과 실험군의 최대 변화량(최댓값-최솟값)을 각각 계산해 줘.')">💡 최대 변화량 구하기</button>
+                <button class="ai-prompt-btn" onclick="fillAIPrompt('최종 시점(마지막 측정)에서 두 집단 간 수치 차이를 비교해 줘.')">💡 최종 시점 차이 구하기</button>
+                <button class="ai-prompt-btn" onclick="fillAIPrompt('대조군과 실험군의 평균을 각각 구해 줘.')">💡 평균 구하기</button>
+                <button class="ai-prompt-btn" onclick="fillAIPrompt('처음 측정값 대비 마지막 측정값의 변화율(%)을 구해 줘.')">💡 변화율(%) 구하기</button>
             </div>
+            <div id="ai-chat-box" class="chat-box"></div>
+            <form class="ai-input-row" onsubmit="event.preventDefault(); askAI();">
+                <input type="text" id="ai-input" placeholder="직접 질문하거나 위의 추천 버튼을 누르세요." autocomplete="off">
+                <button type="submit" class="btn btn-dark" id="ai-send-btn">전송</button>
+            </form>
+        </div>
 
-            <button id="submit-step1-btn" class="submit-btn" style="background-color: #f39c12; margin-top: 20px; box-shadow: 0 6px 16px rgba(243, 156, 18, 0.25);">📝 1차시 설계 결과 전송하기</button>
+        <!-- 2차 시각화 -->
+        <div id="chart2-section" class="chart-section">
+            <h3 class="section-title">2차 시각화: 가공 데이터 (핵심 결과 요약)</h3>
+            <p class="hint">AI와 함께 찾아낸 핵심 가공 데이터를 요약표에 적고, 두 번째 그래프를 그려 보자.</p>
 
-            <div class="nav-buttons">
-                <div></div>
-                <button class="nav-btn next-btn" id="next-1">다음 단계</button>
-            </div>
-        </section>
-
-        <section class="card step" id="step-2">
-            <h2>2. 가상 실험 및 데이터 처리</h2>
-            
-            <div class="simulation-dashboard" style="background-color: #f8fafc; padding: 20px; border-radius: 16px; margin-bottom: 20px;">
-                <!-- 선택된 변인 정보 표시 영역 -->
-                <div id="selected-info" style="background-color: #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 15px; text-align: center; line-height: 1.6;">
-                    <div><strong style="color: #2c3e50;">[대조군 조건]</strong> <span id="info-ctrl">설정된 조건이 없습니다.</span></div>
-                    <div><strong style="color: #e74c3c;">[실험군 조건]</strong> <span id="info-exp">설정된 조건이 없습니다.</span></div>
-                </div>
-
-                <div class="target-select" style="text-align: center; margin-bottom: 20px;">
-                    <label style="font-weight: bold; margin-right: 15px;">측정할 대상 선택:</label>
-                    <input type="radio" name="sim-target" value="ctrl" id="sim-ctrl" checked><label for="sim-ctrl" style="cursor: pointer;">대조군</label>
-                    <input type="radio" name="sim-target" value="exp" id="sim-exp" style="margin-left: 15px; cursor: pointer;"><label for="sim-exp" style="cursor: pointer;">실험군</label>
-                </div>
-                
-                <!-- 현실적인 혈당 측정기 기기 UI -->
-                <div class="glucometer-container" style="display: flex; flex-direction: column; align-items: center; margin-bottom: 10px;">
-                    <div class="device-body">
-                        <div class="device-brand">CareSens-Sim</div>
-                        <div class="device-screen">
-                            <div class="timer-display" id="sim-time">0분 경과 시점</div>
-                            <div class="screen-value" id="sim-screen">--<span class="unit">mg/dL</span></div>
-                            <div class="status-msg" id="sim-status">시험지를 삽입하세요</div>
-                        </div>
-                        <div class="device-buttons">
-                            <button class="device-btn"></button>
-                            <button class="device-btn"></button>
-                        </div>
-                        <div class="strip-slot"></div>
-                    </div>
-                    <button id="measure-btn" class="primary-btn" style="margin-top: 20px; width: 280px; font-size: 16px;">🩸 채혈 및 시험지 삽입하기</button>
-                    <p style="margin-top: 15px; font-size: 14px; color: #7f8c8d;">기기 화면에 표시된 수치를 아래 표에 기록하세요.</p>
-                </div>
-            </div>
-            
-            <h3>시간별 혈당 수치 기록표</h3>
-            <div class="table-responsive">
-                <table id="data-table">
+            <div class="table-scroll">
+                <table class="data-table summary-table">
                     <thead>
-                        <tr>
-                            <th>구분</th>
-                            <th>0분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
-                            <th>30분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
-                            <th>60분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
-                            <th>90분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
-                            <th>120분<br><span style="font-size: 12px; font-weight: normal;">(mg/dL)</span></th>
-                        </tr>
+                        <tr><th>구분</th><th>
+                            <input type="text" id="summary-label" data-key="summary.label" list="summary-label-list" placeholder="가공 데이터 이름 (예: 최대 변화량)">
+                            <datalist id="summary-label-list">
+                                <option value="최대 변화량"></option>
+                                <option value="최종 시점 값"></option>
+                                <option value="평균"></option>
+                                <option value="처음 대비 변화량"></option>
+                                <option value="처음 대비 변화율(%)"></option>
+                            </datalist>
+                        </th></tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td style="font-weight:bold; background-color:#e2e8f0; color: #2c3e50;">대조군</td>
-                            <td><input type="number" class="data-input" id="c-time-0"></td>
-                            <td><input type="number" class="data-input" id="c-time-30"></td>
-                            <td><input type="number" class="data-input" id="c-time-60"></td>
-                            <td><input type="number" class="data-input" id="c-time-90"></td>
-                            <td><input type="number" class="data-input" id="c-time-120"></td>
-                        </tr>
-                        <tr>
-                            <td style="font-weight:bold; background-color:#fdf2e9; color: #e74c3c;">실험군</td>
-                            <td><input type="number" class="data-input" id="e-time-0"></td>
-                            <td><input type="number" class="data-input" id="e-time-30"></td>
-                            <td><input type="number" class="data-input" id="e-time-60"></td>
-                            <td><input type="number" class="data-input" id="e-time-90"></td>
-                            <td><input type="number" class="data-input" id="e-time-120"></td>
-                        </tr>
+                        <tr><td class="row-ctrl">대조군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-c" data-key="summary.c" placeholder="예: 55"></td></tr>
+                        <tr><td class="row-exp">실험군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-e" data-key="summary.e" placeholder="예: 3"></td></tr>
                     </tbody>
                 </table>
             </div>
 
-            <h3>데이터 시각화</h3>
-            <button id="draw-chart-btn" class="primary-btn">그래프로 변환하기</button>
-            <div class="chart-container">
-                <canvas id="resultChart"></canvas>
+            <div class="chart-type-container" data-kind="2">
+                <button class="chart-btn" data-type="line" onclick="chooseChart(2, 'line')">📈 선 그래프</button>
+                <button class="chart-btn" data-type="bar" onclick="chooseChart(2, 'bar')">📊 막대그래프</button>
+                <button class="chart-btn" data-type="pie" onclick="chooseChart(2, 'pie')">🍕 원그래프</button>
+                <button class="chart-btn" data-type="scatter" onclick="chooseChart(2, 'scatter')">✨ 분산형 그래프</button>
             </div>
+            <div class="canvas-container" id="chart-area-2" hidden><canvas id="resultChart2"></canvas></div>
+            <p class="chart-note" id="chart-note-2"></p>
 
-            <div class="nav-buttons">
-                <button class="nav-btn prev-btn" id="prev-2">이전 단계</button>
-                <button class="nav-btn next-btn" id="next-2">다음 단계</button>
-            </div>
-        </section>
-
-        <section class="card step" id="step-3">
-            <h2>3. 결과 분석 및 결론 도출</h2>
-            
-            <div class="analysis-section">
-                <h3>자료 해석</h3>
-                <label>그래프의 경향성을 바탕으로 시간에 따른 혈당 변화를 설명해 봅시다.</label>
-                <textarea id="data-analysis" rows="3" placeholder="예: 공복에 제로 콜라를 마셨을 때, 30분 후 혈당이 약간 상승했지만 60분 이후 다시 원래 수치로 돌아왔다."></textarea>
-            </div>
-
-            <div class="validation">
-                <h3>가설 검증</h3>
-                <label>우리가 처음에 세운 가설은 맞았나요?</label>
-                <div style="margin-top: 10px; margin-bottom: 15px;">
-                    <button id="accept-btn" class="choice-btn">가설 수용</button>
-                    <button id="reject-btn" class="choice-btn">가설 기각</button>
+            <div class="reason-box">
+                <p class="reason-q">이 그래프를 2차 그래프로 선택한 이유는 무엇인가?</p>
+                <div class="reason-sentence">
+                    "우리가 가공한 핵심 데이터는
+                    <select id="reason2-1" data-key="reason2.1">
+                        <option value="">-- 데이터 특징 선택 --</option>
+                        <option value="집단 간의 최종 결과 크기 비교">집단 간의 최종 결과 크기 비교</option>
+                        <option value="두 집단이 전체에서 차지하는 비율">두 집단이 전체에서 차지하는 비율</option>
+                        <option value="데이터의 연속적인 변화 추이">데이터의 연속적인 변화 추이</option>
+                    </select>
+                    을(를) 강조해야 하므로, 이를 가장 잘 보여주는
+                    <select id="reason2-2" data-key="reason2.2">
+                        <option value="">-- 그래프 종류 선택 --</option>
+                        <option value="막대그래프">막대그래프</option>
+                        <option value="원그래프">원그래프</option>
+                        <option value="선 그래프">선 그래프</option>
+                        <option value="분산형 그래프">분산형 그래프</option>
+                    </select>
+                    를(을) 선택했다."
                 </div>
-                
-                <div id="reject-section" class="hidden">
-                    <label>가설이 기각된 원인은 무엇이라고 생각하나요?</label>
-                    <textarea id="cause-analysis" rows="2"></textarea>
-                    
-                    <label>결과를 바탕으로 새로운 가설을 세워봅시다.</label>
-                    <textarea id="new-hypothesis" rows="2"></textarea>
+            </div>
+        </div>
+
+        <!-- 가설 검증 및 결론 -->
+        <div id="validation-section" class="validation-box">
+            <h3>가설 검증 및 결론 도출</h3>
+            <p class="hint">1차, 2차 그래프를 종합해서 처음에 세웠던 가설이 맞는지 판단해 보자.</p>
+            <p class="hypo-recall" id="hypo-recall"></p>
+            <div class="val-buttons">
+                <button id="btn-accept" class="val-btn" onclick="selectValidation('수용')">⭕ 가설 수용</button>
+                <button id="btn-reject" class="val-btn" onclick="selectValidation('기각')">❌ 가설 기각</button>
+            </div>
+            <label class="field">
+                <span class="field-title">최종 결론 한 마디</span>
+                <textarea id="conclusion-input" data-key="conclusion" rows="3" placeholder="탐구 결과를 종합해 알게 된 사실(결론)을 명확하게 적어 보자."></textarea>
+            </label>
+            <button class="btn btn-green btn-block" onclick="finishAnalysis()">✔️ 분석 완료! 결과 제출하기</button>
+        </div>
+    </section>
+
+    <!-- 5. 과학 신문 (디자인은 추후 개선 예정) -->
+    <section id="newspaper-screen" class="screen">
+        <div class="newspaper-layout">
+            <div class="news-header">
+                <h1 id="news-title">OO조 과학 일보</h1>
+                <p>데이터가 말해 주는 생명과학의 진실, 세상을 놀라게 할 탐구 결과 발표</p>
+            </div>
+            <div class="news-columns">
+                <div class="news-col">
+                    <h3>💡 탐구 가설</h3>
+                    <p id="news-hypo-text" class="news-hypo"></p>
+                    <h3>📈 과정 추이 (1차 분석)</h3>
+                    <img id="news-chart1-img" alt="로우 데이터 1차 그래프">
+                    <p id="news-reason1-text" class="news-reason"></p>
                 </div>
-
-                <h3>결론 도출</h3>
-                <label>탐구 결과를 종합하여 최종 결론을 한 문장으로 정리해 봅시다.</label>
-                <textarea id="final-conclusion" rows="2"></textarea>
+                <div class="news-col">
+                    <h3>📊 결과 요약 (2차 분석)</h3>
+                    <img id="news-chart2-img" alt="가공 데이터 2차 그래프">
+                    <p id="news-reason2-text" class="news-reason"></p>
+                    <div class="news-ai">
+                        <h4>🤖 AI 분석가의 조언</h4>
+                        <p id="news-ai-summary"></p>
+                    </div>
+                </div>
+                <div class="news-col">
+                    <h3>✅ 가설 검증</h3>
+                    <div class="center"><span id="news-val-text" class="news-val"></span></div>
+                    <h3>📝 최종 결론</h3>
+                    <p id="news-conclusion-text"></p>
+                    <h3>🤔 기자의 비판적 고찰</h3>
+                    <textarea id="reflection-input" data-key="reflection" rows="6" placeholder="통제하지 못한 변인은 없었는지, 데이터의 한계점과 오차 원인을 비판적으로 작성해 보자."></textarea>
+                </div>
             </div>
+            <button class="btn btn-dark btn-block final-submit-btn" id="final-submit-btn" onclick="submitNewspaper()">🚀 최종 신문 발행 및 선생님께 제출</button>
+        </div>
+    </section>
+</div>
 
-            <div class="reflection">
-                <h3>오차 논의 및 확장</h3>
-                <label>이것이 가상 실험이 아닌 실제 사람을 대상으로 한 실험이었다면, 어떤 변수들 때문에 오차가 발생했을까요?</label>
-                <textarea id="error-discussion" rows="2"></textarea>
-                
-                <label>이 탐구를 통해 새롭게 생긴 의문점이나 더 알아보고 싶은 점을 적어봅시다.</label>
-                <textarea id="learning-point" rows="2"></textarea>
-            </div>
-
-            <div class="teacher-feedback hidden" id="feedback-area">
-                <h4>선생님 피드백</h4>
-                <p id="feedback-text">아직 도착한 피드백이 없습니다.</p>
-            </div>
-            
-            <div class="nav-buttons">
-                <button class="nav-btn prev-btn" id="prev-3">이전 단계</button>
-            </div>
-        </section>
-
-        <button id="submit-all-btn" class="submit-btn hidden">전체 결과 전송하기</button>
+<!-- 분석 완료 축하 화면 -->
+<div id="tada-overlay" class="overlay" hidden>
+    <div class="tada-content">
+        <div class="tada-emoji">🎉</div>
+        <h1>위대한 데이터 분석을 마친 과학자 탄생!</h1>
+        <p>복잡한 로우 데이터 속에서 핵심 결론을 성공적으로 도출해 냈다.</p>
+        <button class="btn btn-primary" onclick="closeTada()">📰 과학 신문 발행하러 가기</button>
     </div>
+</div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="app.js"></script>
+<!-- 선생님 피드백 -->
+<button id="feedback-fab" class="feedback-fab" onclick="toggleFeedbackPanel()" hidden>
+    💬 선생님 피드백 <span id="feedback-badge" class="badge" hidden>0</span>
+</button>
+<aside id="feedback-panel" class="feedback-panel" hidden>
+    <div class="feedback-panel-head">
+        <strong>👩‍🏫 선생님 피드백</strong>
+        <button class="icon-btn" onclick="toggleFeedbackPanel(false)" aria-label="닫기">✕</button>
+    </div>
+    <div id="feedback-list" class="feedback-list"></div>
+</aside>
+
+<div id="toast-area" class="toast-area"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="config.js"></script>
+<script src="themes.js"></script>
+<script src="common.js"></script>
+<script src="devices.js"></script>
+<script src="ai.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

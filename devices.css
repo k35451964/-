@@ -1,0 +1,174 @@
+/* ==========================================
+   가상 계측기 공통
+   ========================================== */
+#dynamic-device-area { display: flex; justify-content: center; min-height: 300px; align-items: center; }
+.device { margin: 0 auto; user-select: none; }
+.dv-time { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.dv-value { font-size: 38px; font-weight: 800; font-family: 'Courier New', monospace; margin-bottom: 8px; line-height: 1.1; }
+.dv-unit { font-size: 15px; font-weight: 600; font-family: 'Pretendard', sans-serif; }
+.dv-msg { font-size: 12px; font-weight: 600; }
+.dv-working { font-size: 20px; font-family: 'Pretendard', sans-serif; animation: blink 1s infinite; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ==========================================
+   1. 혈당 측정기 (콜라)
+   ========================================== */
+.device-glucose { margin-bottom: 46px;
+    position: relative; width: 260px; padding: 25px 20px 40px;
+    background: linear-gradient(160deg, #34495e, #22313f);
+    color: #fff; border-radius: 30px 30px 44px 44px; border: 2px solid #1a252f;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25), inset 0 5px 10px rgba(255, 255, 255, 0.1);
+}
+.glucose-header { font-size: 13px; font-weight: 800; color: #bdc3c7; margin-bottom: 18px; letter-spacing: 0.5px; }
+.glucose-screen {
+    background: #9cb49c; color: #111; border-radius: 12px; padding: 22px 10px;
+    box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.4); border: 3px solid #1a252f;
+}
+.glucose-screen.busy { background: #b4c9a8; }
+.glucose-buttons { display: flex; justify-content: center; gap: 20px; margin-top: 22px; }
+.glucose-buttons span { width: 40px; height: 12px; background: #1a252f; border-radius: 10px; box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.2); }
+.glucose-port { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); width: 46px; height: 10px; background: #111; border-radius: 4px 4px 0 0; }
+.glucose-strip { position: absolute; left: 50%; top: 10px; width: 22px; height: 0; transform: translateX(-50%); background: linear-gradient(#f1c40f, #fff 30%, #fff); border-radius: 0 0 3px 3px; transition: height 0.6s; }
+.glucose-strip.insert, .glucose-strip.in { height: 46px; }
+.glucose-strip.in::after { content: ''; position: absolute; bottom: 4px; left: 50%; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; transform: translateX(-50%); }
+
+/* ==========================================
+   2. 정밀 전자저울 (삼투압)
+   ========================================== */
+.device-scale { width: 300px; }
+.scale-shield {
+    height: 110px; margin: 0 18px; border: 2px solid rgba(160, 190, 210, 0.7); border-bottom: none;
+    border-radius: 14px 14px 0 0; background: linear-gradient(180deg, rgba(220, 235, 245, 0.45), rgba(220, 235, 245, 0.15));
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.scale-pan { width: 150px; height: 14px; border-radius: 50%; background: linear-gradient(#f5f6f7, #aeb6bd); box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25); position: relative; margin-bottom: 4px; }
+.scale-sample {
+    position: absolute; left: 50%; bottom: 8px; width: 54px; height: 38px; transform: translate(-50%, -60px) scale(0.6);
+    opacity: 0; border-radius: 10px 14px 8px 12px; background: radial-gradient(circle at 35% 35%, #f9e7b8, #dcc07f);
+    box-shadow: inset -4px -4px 8px rgba(0, 0, 0, 0.12); transition: 0.6s;
+}
+.scale-sample.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.scale-body {
+    background: linear-gradient(160deg, #eef1f4 0%, #c3cad1 45%, #e6eaee 60%, #aab3bb 100%);
+    border-radius: 14px; padding: 16px 16px 14px; border: 1px solid #8e99a3;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22), inset 0 1px 0 #fff;
+}
+.scale-brand { font-size: 11px; font-weight: 800; color: #4b5763; letter-spacing: 1px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+.scale-brand small { font-weight: 600; }
+.scale-lcd {
+    background: radial-gradient(ellipse at center, #1e6fd9 0%, #0d47a1 80%);
+    color: #e6f4ff; border-radius: 8px; padding: 12px 12px 10px; border: 3px solid #2f3a44;
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.45), 0 0 14px rgba(30, 111, 217, 0.45);
+    text-shadow: 0 0 6px rgba(160, 220, 255, 0.9);
+}
+.scale-lcd.flicker .lcd-value { animation: blink 0.4s infinite; }
+.lcd-top { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+.lcd-stable { color: #9cffb5; }
+.lcd-value { font-size: 40px; font-family: 'Courier New', monospace; font-weight: 800; text-align: right; line-height: 1.15; }
+.lcd-value .dv-unit { color: #cfe8ff; }
+.lcd-msg { font-size: 11px; text-align: left; opacity: 0.9; margin-top: 4px; }
+.scale-keys { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.scale-key {
+    font-size: 11px; font-weight: 800; color: #2f3a44; padding: 6px 12px; border-radius: 6px;
+    background: linear-gradient(#ffffff, #cfd5da); border: 1px solid #8e99a3; box-shadow: 0 2px 0 #7b858f;
+}
+.scale-key.press { transform: translateY(2px); box-shadow: none; background: #b8c0c7; }
+.scale-key.power { color: #c0392b; }
+
+/* ==========================================
+   3. 생태 스캐닝 드론 뷰파인더 (자연선택)
+   ========================================== */
+.device-drone { width: 340px; max-width: 100%; }
+.drone-view { position: relative; height: 250px; border-radius: 12px; overflow: hidden; border: 4px solid #111; background: #000; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3); font-family: 'Courier New', monospace; }
+.drone-field { position: absolute; inset: 0; }
+.ground-ash .drone-field { background: radial-gradient(circle at 30% 40%, #4a4a50, #2b2b30 60%, #1e1e22); }
+.ground-sand .drone-field { background: radial-gradient(circle at 30% 40%, #f0deb0, #dcc38a 60%, #c8ab6e); }
+.drone-view.standby .drone-field { filter: brightness(0.35) grayscale(0.6); }
+.drone-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.65)); pointer-events: none; }
+.mouse { position: absolute; width: 9px; height: 6px; border-radius: 50% 60% 50% 50%; margin: -3px 0 0 -4px; }
+.mouse.black { background: #0e0e0e; box-shadow: 0 0 1px rgba(255, 255, 255, 0.15); }
+.mouse.white { background: #fafafa; box-shadow: 0 0 1px rgba(0, 0, 0, 0.35); }
+.corner { position: absolute; width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.85); }
+.corner.tl { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+.corner.tr { top: 12px; right: 12px; border-left: none; border-bottom: none; }
+.corner.bl { bottom: 12px; left: 12px; border-right: none; border-top: none; }
+.corner.br { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+.drone-target { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: rgba(0, 255, 120, 0.9); font-size: 30px; font-weight: 800; text-shadow: 0 0 6px rgba(0, 0, 0, 0.8); }
+.drone-hud { position: absolute; left: 18px; right: 18px; background: rgba(0, 0, 0, 0.45); border-radius: 6px; padding: 3px 8px; display: flex; justify-content: space-between; align-items: center; color: #e8fff0; font-size: 11px; font-weight: 700; text-shadow: 0 0 4px #000, 0 0 2px #000; }
+.drone-hud.top { top: 14px; }
+.drone-hud.bottom { bottom: 14px; }
+.drone-hud .rec { color: #ff3b30; animation: blink 1s infinite; }
+.drone-count { font-size: 22px; color: #7dffb0; }
+.drone-count .dv-unit { color: #e8fff0; font-size: 13px; }
+.drone-count .dv-working { font-size: 15px; }
+.drone-scanline { position: absolute; left: 0; right: 0; height: 3px; background: rgba(0, 255, 120, 0.8); box-shadow: 0 0 12px rgba(0, 255, 120, 0.9); animation: scan 1.2s linear infinite; }
+@keyframes scan { from { top: 0; } to { top: 100%; } }
+.drone-label { margin-top: 8px; font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--gray); }
+
+/* ==========================================
+   4. 혈액 원심분리 · 항체 분석기 (백신)
+   ========================================== */
+.device-analyzer {
+    width: 300px; background: linear-gradient(180deg, #ffffff, #eef3f9); border-radius: 22px; padding: 18px;
+    border: 1px solid #c8d6e5; box-shadow: 0 16px 34px rgba(30, 80, 140, 0.22);
+}
+.an-top { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+.an-window { width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle, #dbe9f7, #9fbbd9); border: 6px solid #1e5aa8; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.25); flex-shrink: 0; }
+.an-rotor { position: relative; width: 66px; height: 66px; border-radius: 50%; background: #c7d3df; border: 3px solid #7f95ab; }
+.an-rotor i { position: absolute; left: 50%; top: 50%; width: 10px; height: 26px; margin: -13px 0 0 -5px; border-radius: 5px; background: linear-gradient(#ffe0e0 35%, #c0392b 36%); border: 1px solid #8a5050; }
+.an-rotor i:nth-child(1) { transform: rotate(0deg) translateY(-18px); }
+.an-rotor i:nth-child(2) { transform: rotate(90deg) translateY(-18px); }
+.an-rotor i:nth-child(3) { transform: rotate(180deg) translateY(-18px); }
+.an-rotor i:nth-child(4) { transform: rotate(270deg) translateY(-18px); }
+.an-rotor.spin-fast { animation: rotate 0.25s linear infinite; }
+.an-rotor.spin { animation: rotate 0.8s linear infinite; }
+@keyframes rotate { to { transform: rotate(360deg); } }
+.an-side { text-align: left; display: flex; flex-direction: column; gap: 3px; color: #1e5aa8; }
+.an-side b { font-size: 14px; letter-spacing: 0.5px; }
+.an-side span { font-size: 12px; color: #5b7a99; }
+.an-leds { display: flex; gap: 6px; margin-top: 6px; }
+.an-leds i { width: 10px; height: 10px; border-radius: 50%; background: #cfd8e3; }
+.an-leds i.on { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.an-leds i.blink { background: #3498db; box-shadow: 0 0 6px #3498db; animation: blink 0.5s infinite; }
+.an-screen { position: relative; background: #f2f8ff; color: #0b3d75; border: 2px solid #1e5aa8; border-radius: 12px; padding: 18px 10px; box-shadow: inset 0 2px 8px rgba(30, 90, 168, 0.15); }
+.an-spinner { width: 34px; height: 34px; margin: 0 auto 10px; border-radius: 50%; border: 4px solid #cfe0f5; border-top-color: #1e5aa8; animation: rotate 0.8s linear infinite; }
+
+/* ==========================================
+   5. 현미경 콜로니 카운터 (페니실린)
+   ========================================== */
+.device-counter { width: 320px; max-width: 100%; }
+.counter-lens {
+    width: 280px; height: 280px; margin: 0 auto; border-radius: 50%; padding: 14px;
+    background: radial-gradient(circle, #3a3f45 60%, #15181b 72%);
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.35), inset 0 0 0 4px #5c636b;
+}
+.counter-lens.focusing .counter-dish { animation: focus 1.2s ease-in-out infinite; }
+@keyframes focus { 0%, 100% { filter: blur(0); } 50% { filter: blur(3px) brightness(1.1); } }
+.counter-dish {
+    position: relative; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+    background-color: #f6efd4;
+    background-image:
+        linear-gradient(rgba(60, 100, 140, 0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(60, 100, 140, 0.18) 1px, transparent 1px);
+    background-size: 20px 20px;
+    box-shadow: inset 0 0 25px rgba(120, 90, 30, 0.35);
+}
+.colony { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
+.colony.staph { background: radial-gradient(circle at 35% 35%, #fff6c9, #e1b12c); box-shadow: 0 0 1px rgba(120, 80, 0, 0.6); }
+.colony.ecoli { background: radial-gradient(circle at 35% 35%, #fbf7ee, #cdbb9a); box-shadow: 0 0 1px rgba(100, 80, 40, 0.6); }
+.mold {
+    position: absolute; left: 50%; top: 50%; width: 30%; height: 30%; transform: translate(-50%, -50%); border-radius: 50%;
+    background: radial-gradient(circle, #2e7d6b 0%, #3f9f86 45%, #9bd3c0 70%, rgba(155, 211, 192, 0) 72%);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.25);
+}
+.counter-panel { margin: 14px auto 0; width: 240px; background: #111; color: #39ff88; border-radius: 10px; padding: 12px; font-family: 'Courier New', monospace; border: 2px solid #333; }
+.counter-title { font-size: 11px; color: #9fa6ad; letter-spacing: 1px; margin-bottom: 6px; }
+.counter-panel .dv-time { color: #9fe8bc; }
+.counter-value { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+.counter-value .dv-unit { color: #9fe8bc; }
+.counter-panel .dv-msg { color: #cfd6dc; font-family: 'Pretendard', sans-serif; }
+
+@media (max-width: 400px) {
+    .counter-lens { width: 250px; height: 250px; }
+    .device-drone, .device-scale, .device-analyzer { width: 100%; }
+}
