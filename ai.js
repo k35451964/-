@@ -1,13 +1,46 @@
 // ==========================================
 // AI 데이터 분석 어시스턴트
 // ------------------------------------------
-// 지금은 내장 규칙 기반 엔진이 학생이 기록표에 입력한 값으로 통계를 계산해 답한다.
-// 나중에 Gemini API를 연결할 때는 getAIAnswer() 안에서 Supabase Edge Function을 호출하도록
-// 바꾸면 된다. (API 키는 절대 이 파일에 넣지 않는다)
+// 1) 내장 계산 엔진(ruleBasedAnswer)이 기록표 값으로 통계를 정확히 계산하고,
+// 2) Supabase Edge Function(ai-assistant)이 그 계산 결과를 Gemini에 넘겨 설명을 만든다.
+// Gemini가 설정되지 않았거나 응답이 없으면 내장 계산 결과로 대신 답한다.
+// (Gemini API 키는 이 파일이 아니라 Supabase Secrets에 저장한다)
 // ==========================================
+const AI_TIMEOUT_MS = 25000;
+
+const AI_ERROR_NOTES = {
+    rate_limited: '질문이 너무 많아서 잠시 쉬는 중이에요. 1분 뒤에 다시 물어봐 주세요.',
+    gemini_quota: 'AI 사용량이 잠시 꽉 찼어요. 조금 뒤에 다시 물어봐 주세요.'
+};
 
 async function getAIAnswer(question, ctx) {
-    return ruleBasedAnswer(question, ctx);
+    const local = ruleBasedAnswer(question, ctx);
+    // Gemini가 숫자를 틀리지 않도록, 모든 통계를 미리 계산해서 함께 보낸다
+    const stats = ruleBasedAnswer('최대 변화량 최종 시점 평균 처음 대비 변화율', ctx);
+    try {
+        const call = sb.functions.invoke('ai-assistant', {
+            body: { team_id: ctx.teamId, question, context: { ...ctx, stats } }
+        });
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), AI_TIMEOUT_MS));
+        const { data, error } = await Promise.race([call, timeout]);
+        if (error) throw error;
+        if (data && data.answer) return cleanAIText(data.answer);
+        if (data && AI_ERROR_NOTES[data.error]) return `${AI_ERROR_NOTES[data.error]}\n\n${local}`;
+        throw new Error((data && data.error) || 'empty');
+    } catch (e) {
+        console.warn('Gemini 연결 실패, 내장 계산으로 답합니다:', e && e.message ? e.message : e);
+        return `${local}\n\n※ 지금은 AI 연결이 원활하지 않아 기본 계산 결과로 답했어요.`;
+    }
+}
+
+// 혹시 섞여 나온 마크다운 기호를 정리한다
+function cleanAIText(text) {
+    return String(text)
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/^#{1,6}\s*/gm, '')
+        .replace(/^\s*[-*]\s+/gm, '• ')
+        .replace(/`/g, '')
+        .trim();
 }
 
 function ruleBasedAnswer(question, ctx) {

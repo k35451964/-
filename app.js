@@ -904,7 +904,10 @@ function buildAIContext() {
         labels: th.measure.labels,
         ctrl: readSeries(state, 'c'),
         exp: readSeries(state, 'e'),
-        hypothesis: state.hypothesis || ''
+        hypothesis: state.hypothesis || '',
+        teamId: team.id,
+        ctrlConditions: conditionText(th, state, 'ctrl'),
+        expConditions: conditionText(th, state, 'exp')
     };
 }
 
