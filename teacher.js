@@ -503,6 +503,42 @@ async function copyLink() {
     toast('학생 입장 링크를 복사했어요.', 'success');
 }
 
+// QR을 인쇄·게시용 PNG로 저장 (아래에 수업 코드 글자도 함께 넣는다)
+function downloadQR() {
+    if (!myInfo || !window.qrcode) return;
+    const qr = qrcode(0, 'M');
+    qr.addData(studentLink());
+    qr.make();
+    const cells = qr.getModuleCount();
+    const cell = 12, margin = 4 * cell, size = cells * cell + margin * 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size + 90;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000000';
+    for (let r = 0; r < cells; r++) {
+        for (let c = 0; c < cells; c++) {
+            if (qr.isDark(r, c)) ctx.fillRect(margin + c * cell, margin + r * cell, cell, cell);
+        }
+    }
+    ctx.fillStyle = '#2c3e50';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 44px sans-serif';
+    ctx.fillText(`수업 코드 ${myInfo.code}`, size / 2, size + 50);
+    canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `class-code-${myInfo.code}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
+}
+
 function toggleLinkBig() {
     $('link-modal').classList.toggle('big');
 }

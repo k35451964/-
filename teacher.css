@@ -116,13 +116,14 @@ body.no-scroll { overflow: hidden; }
 .link-row { display: flex; gap: 8px; margin-bottom: 12px; }
 .link-row input { flex: 1; font-size: 13px; }
 .link-row .btn { flex-shrink: 0; border-radius: 8px; }
+.link-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .link-content h3 { text-align: left; }
 .link-content .hint:not(.center) { text-align: left; }
 #link-modal.big { background: #fff; }
 #link-modal.big .modal-content { max-width: 900px; box-shadow: none; }
 #link-modal.big .link-code { font-size: 90px; letter-spacing: 16px; }
 #link-modal.big .link-qr { width: 420px; max-width: 80vw; }
-#link-modal.big .link-row, #link-modal.big h3, #link-modal.big .hint:not(.center) { display: none; }
+#link-modal.big .link-row, #link-modal.big h3, #link-modal.big .link-actions .btn:last-child, #link-modal.big .hint:not(.center) { display: none; }
 
 /* 모달 */
 .modal { position: fixed; inset: 0; z-index: 150; background: rgba(15, 23, 42, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; }

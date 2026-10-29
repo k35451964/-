@@ -103,7 +103,10 @@
             <input type="text" id="link-url" readonly onclick="this.select()">
             <button class="btn btn-small btn-primary" onclick="copyLink()">복사</button>
         </div>
-        <button class="btn btn-small btn-ghost" onclick="toggleLinkBig()">🔍 크게 보기 (화면에 띄우기)</button>
+        <div class="link-actions">
+            <button class="btn btn-small btn-ghost" onclick="toggleLinkBig()">🔍 크게 보기 (화면에 띄우기)</button>
+            <button class="btn btn-small btn-ghost" onclick="downloadQR()">⬇️ QR 이미지 저장</button>
+        </div>
         <h3 class="section-title">선생님 표시 이름</h3>
         <p class="hint">학생 입장 화면에 "○○ 선생님의 수업"으로 보여요.</p>
         <div class="link-row">
