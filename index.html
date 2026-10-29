@@ -33,22 +33,34 @@
         <h1>🔍 웹 기반 과학 탐구 프로젝트</h1>
         <p class="lead">가상 실험 시뮬레이터로 과학적 탐구의 과정을 모둠원과 함께 직접 설계해 보자.</p>
 
-        <div class="intro-form">
+        <!-- 수업 코드 (선생님 링크로 들어오면 자동으로 채워짐) -->
+        <div id="code-box" class="code-box" hidden>
             <label class="field">
-                <span>학년</span>
-                <select id="grade-select" onchange="onGradeChange()"></select>
+                <span>수업 코드</span>
+                <input type="text" id="code-input" maxlength="6" autocomplete="off" placeholder="선생님이 알려 준 6자리 코드" onkeydown="if (event.key === 'Enter') submitCode()">
             </label>
-            <label class="field">
-                <span>반</span>
-                <select id="class-select" onchange="onClassChange()"></select>
-            </label>
-            <label class="field">
-                <span>모둠</span>
-                <select id="team-select"></select>
-            </label>
+            <button class="btn btn-primary" onclick="submitCode()">확인</button>
+        </div>
+
+        <div id="team-pick" hidden>
+            <p id="teacher-line" class="teacher-line"></p>
+            <div class="intro-form">
+                <label class="field">
+                    <span>학년</span>
+                    <select id="grade-select" onchange="onGradeChange()"></select>
+                </label>
+                <label class="field">
+                    <span>반</span>
+                    <select id="class-select" onchange="onClassChange()"></select>
+                </label>
+                <label class="field">
+                    <span>모둠</span>
+                    <select id="team-select"></select>
+                </label>
+            </div>
         </div>
         <p id="intro-msg" class="intro-msg"></p>
-        <button class="btn btn-primary btn-block" id="enter-btn" onclick="enterTeam()">탐구 시작하기</button>
+        <button class="btn btn-primary btn-block" id="enter-btn" onclick="enterTeam()" hidden>탐구 시작하기</button>
         <p class="hint center">같은 모둠을 고르면 모둠원 모두의 화면이 실시간으로 함께 바뀌어요.</p>
     </section>
 

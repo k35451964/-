@@ -1,7 +1,10 @@
 // ==========================================
 // 학생 화면과 교사 대시보드가 함께 쓰는 공통 기능
 // ==========================================
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// 학생 화면은 로그인 정보를 쓰지 않는다 (같은 브라우저에 교사가 로그인해 있어도 학생으로 동작)
+const IS_TEACHER_PAGE = document.body.classList.contains('teacher');
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY,
+    IS_TEACHER_PAGE ? {} : { auth: { persistSession: false, autoRefreshToken: false } });
 
 const STAGES = [
     { no: 1, name: '문제 인식', screen: 'story-screen' },

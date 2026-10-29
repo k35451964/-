@@ -28,6 +28,7 @@
         <div class="dash-title">
             <h1>실시간 탐구 현황</h1>
             <span id="live-dot" class="live-dot" title="실시간 연결 상태">● 실시간</span>
+            <button class="code-chip" id="code-chip" onclick="openLinkModal()" title="학생 입장 링크·QR 보기">🔗 수업 코드 <b id="my-code"></b></button>
         </div>
         <div class="dash-filters">
             <select id="filter-grade" onchange="onFilterChange()"></select>
@@ -90,6 +91,28 @@
     </div>
 </div>
 
+<!-- 학생 입장 링크 · QR -->
+<div id="link-modal" class="modal" hidden>
+    <div class="modal-content link-content">
+        <button class="icon-btn modal-close" onclick="closeModal('link-modal')" aria-label="닫기">✕</button>
+        <h2>🔗 학생 입장 링크</h2>
+        <p class="hint center">학생이 이 링크나 QR로 들어오면 선생님의 반만 보여요.</p>
+        <div class="link-code" id="link-code"></div>
+        <div class="link-qr" id="link-qr"></div>
+        <div class="link-row">
+            <input type="text" id="link-url" readonly onclick="this.select()">
+            <button class="btn btn-small btn-primary" onclick="copyLink()">복사</button>
+        </div>
+        <button class="btn btn-small btn-ghost" onclick="toggleLinkBig()">🔍 크게 보기 (화면에 띄우기)</button>
+        <h3 class="section-title">선생님 표시 이름</h3>
+        <p class="hint">학생 입장 화면에 "○○ 선생님의 수업"으로 보여요.</p>
+        <div class="link-row">
+            <input type="text" id="teacher-name-input" maxlength="30" placeholder="예: 김탐구">
+            <button class="btn btn-small btn-ghost" onclick="saveTeacherName()">저장</button>
+        </div>
+    </div>
+</div>
+
 <!-- 전체 공지 -->
 <div id="broadcast-modal" class="modal" hidden>
     <div class="modal-content">
@@ -105,6 +128,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="config.js"></script>
 <script src="themes.js"></script>
 <script src="common.js"></script>

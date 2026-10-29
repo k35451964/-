@@ -105,6 +105,25 @@ body.no-scroll { overflow: hidden; }
 .detail-view.big .rp-hypo, .detail-view.big .rp-conclusion { font-size: 20px; }
 .detail-view.big .rp-chart { height: 380px; }
 
+/* 수업 코드 · 학생 링크 */
+.code-chip { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 20px; padding: 6px 12px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--navy); }
+.code-chip b { letter-spacing: 2px; color: var(--blue-dark); }
+.code-chip:hover { border-color: var(--blue); }
+.link-content { text-align: center; }
+.link-code { font-size: 40px; font-weight: 800; letter-spacing: 8px; color: var(--blue-dark); margin: 4px 0 10px; }
+.link-qr { width: 220px; margin: 0 auto 14px; }
+.link-qr svg { width: 100%; height: auto; display: block; }
+.link-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.link-row input { flex: 1; font-size: 13px; }
+.link-row .btn { flex-shrink: 0; border-radius: 8px; }
+.link-content h3 { text-align: left; }
+.link-content .hint:not(.center) { text-align: left; }
+#link-modal.big { background: #fff; }
+#link-modal.big .modal-content { max-width: 900px; box-shadow: none; }
+#link-modal.big .link-code { font-size: 90px; letter-spacing: 16px; }
+#link-modal.big .link-qr { width: 420px; max-width: 80vw; }
+#link-modal.big .link-row, #link-modal.big h3, #link-modal.big .hint:not(.center) { display: none; }
+
 /* 모달 */
 .modal { position: fixed; inset: 0; z-index: 150; background: rgba(15, 23, 42, 0.5); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .modal-content { position: relative; background: #fff; border-radius: 18px; padding: 28px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }

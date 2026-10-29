@@ -52,11 +52,76 @@ function setIntroMsg(text, isError = false) {
     el.classList.toggle('error', isError);
 }
 
+// ---------- 수업 코드 → 선생님 찾기 ----------
+let currentTeacher = null;     // { id, name, code }
+
+function initIntro() {
+    const fromUrl = new URLSearchParams(location.search).get('t');
+    const code = (fromUrl || storageGet('lastCode') || '').trim().toUpperCase();
+    if (code) loadTeacher(code);
+    else showCodeBox();
+}
+
+function showCodeBox(message = '', isError = false) {
+    currentTeacher = null;
+    $('code-box').hidden = false;
+    $('team-pick').hidden = true;
+    $('enter-btn').hidden = true;
+    setIntroMsg(message || '선생님께 받은 링크로 들어오거나, 6자리 수업 코드를 입력하세요.', isError);
+    $('code-input').focus();
+}
+
+function submitCode() {
+    const code = $('code-input').value.trim().toUpperCase();
+    if (code.length !== 6) {
+        setIntroMsg('수업 코드 6자리를 입력해 주세요.', true);
+        return;
+    }
+    loadTeacher(code);
+}
+
+function changeCode() {
+    storageSet('lastCode', '');
+    history.replaceState(null, '', location.pathname);
+    $('code-input').value = '';
+    showCodeBox();
+}
+
+async function loadTeacher(code) {
+    setIntroMsg('수업을 찾는 중...');
+    const { data, error } = await sb.rpc('find_teacher', { p_code: code });
+    if (error) {
+        console.error('수업 찾기 오류:', error);
+        $('code-input').value = code;
+        showCodeBox('수업 정보를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.', true);
+        return;
+    }
+    const found = Array.isArray(data) ? data[0] : data;
+    if (!found) {
+        storageSet('lastCode', '');
+        $('code-input').value = code;
+        showCodeBox(`'${code}' 수업을 찾을 수 없어요. 코드를 다시 확인해 주세요.`, true);
+        return;
+    }
+    currentTeacher = { id: found.id, name: found.name, code };
+    storageSet('lastCode', code);
+    // 새로고침해도 같은 수업으로 들어오도록 주소에 코드를 남긴다
+    history.replaceState(null, '', `${location.pathname}?t=${code}`);
+    $('code-box').hidden = true;
+    $('team-pick').hidden = false;
+    $('teacher-line').innerHTML = `👩‍🏫 <b>${escapeHtml(found.name ? `${found.name} 선생님` : '선생님')}</b>의 수업 <span class="muted">(코드 ${code})</span>
+        <button class="link-btn" onclick="changeCode()">다른 수업 코드 입력</button>`;
+    loadRoster();
+}
+
 async function loadRoster() {
+    if (!currentTeacher) { initIntro(); return; }
     setIntroMsg('모둠 목록을 불러오는 중...');
+    $('enter-btn').hidden = false;
     $('enter-btn').disabled = true;
     const { data, error } = await sb.from('teams')
         .select('id, grade, class_no, team_no, theme_id, stage')
+        .eq('teacher_id', currentTeacher.id)
         .order('grade').order('class_no').order('team_no');
     if (error) {
         console.error('모둠 목록 오류:', error);
@@ -1008,4 +1073,4 @@ function submitNewspaper() {
 // ==========================================
 // 시작
 // ==========================================
-loadRoster();
+initIntro();

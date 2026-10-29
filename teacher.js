@@ -4,6 +4,7 @@
 // 교사 계정으로 로그인 → 모든 모둠의 진행 상황을 실시간으로 보고,
 // 모둠별 탐구 결과(신문) 전체 보기, 피드백·공지 보내기, 모둠 만들기/초기화를 한다.
 // ==========================================
+let myInfo = null;            // { id, code, name }
 let teams = [];
 let allMessages = [];
 let onlineByTeam = {};
@@ -67,6 +68,9 @@ async function enterDashboard() {
         setLoginMsg('교사로 등록되지 않은 계정이에요. Supabase의 teachers 표에 이메일을 추가해 주세요.', true);
         return;
     }
+    const info = await sb.rpc('my_teacher_info');
+    myInfo = info.data && (Array.isArray(info.data) ? info.data[0] : info.data);
+    if (myInfo) $('my-code').textContent = myInfo.code;
     setLoginMsg('');
     $('login-view').hidden = true;
     $('dash-view').hidden = false;
@@ -121,6 +125,7 @@ function subscribe() {
             scheduleRender();
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, p => {
+            if (!allMessages.some(m => m.id === p.old.id)) return;
             allMessages = allMessages.filter(m => m.id !== p.old.id);
             scheduleRender();
         })
@@ -135,6 +140,7 @@ function subscribe() {
 
 function onTeamChange(p) {
     if (p.eventType === 'DELETE') {
+        if (!teams.some(t => t.id === p.old.id)) return;     // 다른 선생님의 모둠
         teams = teams.filter(t => t.id !== p.old.id);
         if (detailId === p.old.id) closeDetail();
     } else {
@@ -223,7 +229,7 @@ function renderGrid() {
     const list = filteredTeams();
     const container = $('grid-container');
     $('grid-empty').hidden = list.length > 0;
-    $('grid-empty').textContent = teams.length ? '이 반에는 모둠이 없어요.' : '아직 모둠이 없어요. 오른쪽 위 [⚙️ 모둠 관리]에서 학년·반·모둠을 만들어 주세요.';
+    $('grid-empty').textContent = teams.length ? '이 반에는 모둠이 없어요.' : '아직 모둠이 없어요. 오른쪽 위 [⚙️ 모둠 관리]에서 학년·반·모둠을 만든 뒤, [🔗 수업 코드]의 링크를 학생들에게 알려 주세요.';
 
     const count = idx => list.filter(t => progressFlags(t)[idx][1]).length;
     const online = list.reduce((sum, t) => sum + (onlineByTeam[t.id] || 0), 0);
@@ -444,6 +450,58 @@ async function sendBroadcast() {
 }
 
 // ==========================================
+// 학생 입장 링크 · QR
+// ==========================================
+function studentLink() {
+    const base = new URL('./', location.href);    // teacher.html과 같은 폴더의 학생 화면
+    return `${base.href}?t=${myInfo ? myInfo.code : ''}`;
+}
+
+function openLinkModal() {
+    if (!myInfo) return;
+    const url = studentLink();
+    $('link-code').textContent = myInfo.code;
+    $('link-url').value = url;
+    $('teacher-name-input').value = myInfo.name || '';
+    if (window.qrcode) {
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        $('link-qr').innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+    } else {
+        $('link-qr').innerHTML = '';
+    }
+    openModal('link-modal');
+}
+
+async function copyLink() {
+    const url = $('link-url').value;
+    try {
+        await navigator.clipboard.writeText(url);
+    } catch (e) {
+        $('link-url').select();
+        document.execCommand('copy');
+    }
+    toast('학생 입장 링크를 복사했어요.', 'success');
+}
+
+function toggleLinkBig() {
+    $('link-modal').classList.toggle('big');
+}
+
+async function saveTeacherName() {
+    const name = $('teacher-name-input').value.trim();
+    const { error } = await sb.rpc('set_my_teacher_name', { p_name: name });
+    if (error) {
+        console.error(error);
+        toast('이름을 저장하지 못했어요. 다시 시도해 주세요.', 'error');
+        return;
+    }
+    myInfo.name = name || null;
+    toast('표시 이름을 저장했어요.', 'success');
+}
+
+// ==========================================
 // 모둠 관리
 // ==========================================
 function openModal(id) {
@@ -545,7 +603,8 @@ async function resetTeam() {
 
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-        if (!$('manage-modal').hidden) closeModal('manage-modal');
+        if (!$('link-modal').hidden) closeModal('link-modal');
+        else if (!$('manage-modal').hidden) closeModal('manage-modal');
         else if (!$('broadcast-modal').hidden) closeModal('broadcast-modal');
         else if (detailId) closeDetail();
     }
