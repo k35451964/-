@@ -68,9 +68,7 @@ async function enterDashboard() {
         setLoginMsg('교사로 등록되지 않은 계정이에요. Supabase의 teachers 표에 이메일을 추가해 주세요.', true);
         return;
     }
-    const info = await sb.rpc('my_teacher_info');
-    myInfo = info.data && (Array.isArray(info.data) ? info.data[0] : info.data);
-    if (myInfo) $('my-code').textContent = myInfo.code;
+    await loadMyInfo();
     setLoginMsg('');
     $('login-view').hidden = true;
     $('dash-view').hidden = false;
@@ -457,8 +455,28 @@ function studentLink() {
     return `${base.href}?t=${myInfo ? myInfo.code : ''}`;
 }
 
-function openLinkModal() {
-    if (!myInfo) return;
+// 내 수업 코드·표시 이름 불러오기
+async function loadMyInfo() {
+    const { data, error } = await sb.rpc('my_teacher_info');
+    myInfo = data && (Array.isArray(data) ? data[0] : data);
+    if (error || !myInfo || !myInfo.code) {
+        console.error('수업 코드 불러오기 실패:', error, data);
+        myInfo = null;
+        $('my-code').textContent = '확인 필요';
+        return error ? (error.message || String(error)) : '수업 코드가 비어 있음';
+    }
+    $('my-code').textContent = myInfo.code;
+    return null;
+}
+
+async function openLinkModal() {
+    if (!myInfo) {
+        const reason = await loadMyInfo();
+        if (reason) {
+            alert(`수업 코드를 불러오지 못했어요.\n\nSupabase SQL Editor에서 supabase/setup.sql을 다시 실행했는지 확인해 주세요.\n\n(오류 내용: ${reason})`);
+            return;
+        }
+    }
     const url = studentLink();
     $('link-code').textContent = myInfo.code;
     $('link-url').value = url;
