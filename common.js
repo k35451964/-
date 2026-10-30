@@ -149,17 +149,26 @@ function designSignature(themeId, state) {
 
 // ---------- 가설 · 예측 ----------
 const HYPO_KEYS = ['hypo.control', 'hypo.manip', 'hypo.dep', 'hypo.effect'];
-const PRED_KEYS = ['pred.b', 'pred.c', 'pred.dir'];
+const PRED_KEYS = ['pred.dir'];
 
 function composeHypothesis(state) {
     const v = k => (state[k] || '').trim();
     return `[${v('hypo.control')}]이(가) 같을 때, [${v('hypo.manip')}]은(는) [${v('hypo.dep')}]에 영향을 ${v('hypo.effect') || '___'}.`;
 }
 
-function composePrediction(state) {
+// 예측의 '대조군 값 대신 실험군 값'은 변인 표에서 정한 조작 변인 값을 그대로 쓴다
+function predictionValues(state, theme) {
+    if (!theme) return { b: state['pred.b'] || '', c: state['pred.c'] || '' };
+    const c = getConditions(theme, state);
+    const pick = idx => c.manipulated.filter(i => idx[i] >= 0).map(i => theme.vars[i].options[idx[i]]).join(' · ');
+    return { b: pick(c.ctrl), c: pick(c.exp) };
+}
+
+function composePrediction(state, theme) {
     const v = k => (state[k] || '').trim();
+    const { b, c } = predictionValues(state, theme);
     const detail = v('pred.detail');
-    return `만약 [${v('pred.b')}] 대신 [${v('pred.c')}]을(를) 적용하면, [${v('hypo.dep')}]은(는) ${v('pred.dir') || '___'} 것이다.`
+    return `만약 [${b || '___'}] 대신 [${c || '___'}]을(를) 적용하면, [${v('hypo.dep') || '종속 변인'}]은(는) 대조군보다 ${v('pred.dir') || '___'} 것이다.`
         + (detail ? ` (구체적으로: ${detail})` : '');
 }
 
@@ -418,6 +427,33 @@ function metricById(id) {
     return METRICS.find(m => m.id === id) || null;
 }
 
+// '직접 정한 가공 데이터': AI에게 직접 질문해서 구한 값처럼 목록에 없는 데이터
+const CUSTOM_SHAPES = [
+    { id: 'pair', name: '두 집단의 값 하나씩', rows: ['c', 'e'], cols: 1 },
+    { id: 'series', name: '측정 시점마다 두 집단의 값', rows: ['c', 'e'], cols: 5 },
+    { id: 'ratio', name: '전체 중 두 집단의 비율(%)', rows: ['c', 'e'], cols: 1 }
+];
+
+function customMetric(state) {
+    const shape = CUSTOM_SHAPES.find(x => x.id === state['sum.custom.shape']) || CUSTOM_SHAPES[0];
+    const unit = (state['sum.custom.unit'] || '').trim();
+    return {
+        id: 'custom', custom: true, group: shape.id,
+        name: (state['sum.custom.name'] || '').trim() || '직접 정한 가공 데이터',
+        desc: 'AI에게 직접 질문해서 구한 값처럼 목록에 없는 가공 데이터',
+        rows: shape.rows, cols: shape.cols,
+        unit: shape.id === 'ratio' ? '%' : unit, decimals: 2,
+        compute: () => ({})     // 자동 확인은 하지 않음
+    };
+}
+
+// 지금 모둠이 고른 핵심 가공 데이터 (목록 + 직접 정한 데이터)
+function resolveMetric(state) {
+    const id = state['sum.metric'];
+    if (id === 'custom') return customMetric(state);
+    return metricById(id);
+}
+
 function metricRows(m) {
     return m.rows || ['c', 'e'];
 }
@@ -428,6 +464,7 @@ function metricCols(m) {
 
 function metricUnit(m, theme) {
     if (m.unit === 'time') return theme.measure.labels[4].replace(/[0-9.\s]/g, '');
+    if (m.custom) return m.unit;
     return m.unit || theme.measure.unit;
 }
 
@@ -462,7 +499,7 @@ function summaryValues(m, state) {
 
 // 입력값 확인: 기록표 값으로 계산한 값과 비교 (반올림 차이는 허용)
 function summaryCheck(theme, state) {
-    const m = metricById(state['sum.metric']);
+    const m = resolveMetric(state);
     if (!m) return null;
     const expected = m.compute(readSeries(state, 'c'), readSeries(state, 'e'), theme);
     const entered = summaryValues(m, state);
@@ -482,7 +519,7 @@ function summaryCheck(theme, state) {
 }
 
 function buildSummaryChart(theme, state, common) {
-    const m = metricById(state['sum.metric']);
+    const m = resolveMetric(state);
     if (!m) return { type: 'bar', data: { labels: [], datasets: [] }, options: common };
     const group = METRIC_GROUPS.find(g => g.id === m.group);
     const v = summaryValues(m, state);
@@ -520,7 +557,7 @@ function buildSummaryChart(theme, state, common) {
 
 // 2차 그래프 아래 안내: 왜 이 그래프로 그렸는지
 function summaryChartWhy(state) {
-    const m = metricById(state['sum.metric']);
+    const m = resolveMetric(state);
     if (!m) return '';
     const group = METRIC_GROUPS.find(g => g.id === m.group);
     const v = summaryValues(m, state);
@@ -532,14 +569,135 @@ function summaryChartWhy(state) {
 
 // 가설 검증·신문·교사 화면에 쓰는 한 줄 요약
 function summaryText(theme, state) {
-    const m = metricById(state['sum.metric']);
+    const m = resolveMetric(state);
     if (!m) return '';
     const v = summaryValues(m, state);
     const unit = metricUnit(m, theme);
-    const f = x => (x === null ? '?' : `${x}${unit === '%' ? '%' : ` ${unit}`}`);
+    const f = x => (x === null ? '?' : `${x}${unit === '%' ? '%' : unit ? ` ${unit}` : ''}`);
     if (metricCols(m) === 5) {
         return `${m.name} — ` + metricRows(m).map(r =>
             `${metricRowLabel(m, theme, state, r)}: ${theme.measure.labels.map((l, i) => `${l} ${v[r][i] === null ? '?' : v[r][i]}`).join(', ')}`).join(' / ');
     }
     return `${m.name} — ` + metricRows(m).map(r => (r === 's' ? f(v[r][0]) : `${metricRowLabel(m, theme, state, r)}: ${f(v[r][0])}`)).join(' / ');
+}
+
+// ==========================================
+// 과학 신문 (학생 화면과 교사 대시보드가 같은 모양으로 그린다)
+// ------------------------------------------
+// editable: 학생 화면이면 인터뷰 답변을 신문 안에서 바로 쓸 수 있게 입력칸으로 만든다
+// ==========================================
+const INTERVIEW_QUESTIONS = [
+    { key: 'interview.q1', q: '실제 실험이었다면 어떤 오차 요인이 있었을까요?',
+        example: '예: (식물 실험이라면) 화분마다 흙의 양이 조금씩 달랐을 수 있고, 키를 잴 때 자의 눈금을 읽는 위치가 달랐을 수 있어요.' },
+    { key: 'interview.q2', q: '그 오차를 고려해도, 여러분의 결론은 실제 상황에서도 성립한다고 말할 수 있을까요? 어떤 상황에 적용할 수 있을까요?',
+        example: '예: (식물 실험이라면) 오차보다 두 집단의 차이가 훨씬 커서 결론은 성립한다고 생각해요. 베란다 화분을 키울 때 햇빛이 잘 드는 곳에 두는 데 적용할 수 있어요.' }
+];
+
+function comicPanelHtml(theme, index, big = false) {
+    const p = theme.comic[index] || theme.comic[0];
+    const visual = p.image
+        ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.text)}">`
+        : `<div class="np-emoji">${p.emoji}</div>`;
+    return `<div class="np-panel ${big ? 'big' : ''}">${visual}<p>${escapeHtml(p.text)}</p></div>`;
+}
+
+function buildNewspaperHtml({ team, theme, state, chart1Url, chart2Url, editable }) {
+    const s = state;
+    const none = '<span class="np-empty">(아직 작성하지 않았어요)</span>';
+    const text = v => (v && String(v).trim() ? escapeHtml(v) : none);
+    const c = getConditions(theme, s);
+    const cl = groupLabel(theme, s, 'ctrl'), el = groupLabel(theme, s, 'exp');
+    const when = s['newspaper.submittedAt'] ? new Date(s['newspaper.submittedAt']) : new Date();
+    const dateText = when.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // 1면: 문제 상황
+    const panelIndex = Math.max(0, Math.min(theme.comic.length - 1, Number(s['news.panel'] || 0)));
+    const figure = theme.image
+        ? `<div class="np-panel big"><img src="${escapeHtml(theme.image)}" alt="${escapeHtml(theme.title)}"></div>`
+        : comicPanelHtml(theme, panelIndex, true);
+
+    // 탐구 설계
+    const nManip = c.manipulated.length;
+    const designRows = theme.vars.map((v, i) => {
+        const manip = c.manipulated.includes(i);
+        const val = idx => (idx >= 0 ? escapeHtml(shortValue(v.options[idx])) : '미정');
+        return manip
+            ? `<tr class="manip"><td>${escapeHtml(v.name)}<small>조작</small></td><td>${val(c.ctrl[i])}</td><td>${val(c.exp[i])}</td></tr>`
+            : `<tr><td>${escapeHtml(v.name)}<small>통제</small></td><td colspan="2">같게: ${val(c.ctrl[i])}</td></tr>`;
+    }).join('');
+
+    // 2차 그래프 제목은 데이터 모양에 따라
+    const m = resolveMetric(s);
+    const head2 = !m ? '숫자로 확인한 결정적 증거' : m.group === 'series' ? '시간이 말해 주는 결정적 차이' : m.group === 'ratio' ? '비율로 본 결정적 증거' : '숫자 하나가 모든 것을 말한다';
+
+    // 가설 검증
+    const verdict = s.validation === '수용' ? { cls: 'accept', stamp: '가설 수용', head: '예측 적중! 가설, 데이터로 증명되다' }
+        : s.validation === '기각' ? { cls: 'reject', stamp: '가설 기각', head: '반전! 가설 기각… 그러나 탐구는 계속된다' }
+            : { cls: '', stamp: '판정 대기', head: '판정을 기다리는 중' };
+    const conclusionBlock = s.validation === '기각'
+        ? `<h3 class="np-head">다음 탐구를 향해</h3>
+           <div class="np-quote"><span class="np-label">수정한 가설</span>${text(s['val.revised'])}</div>
+           <div class="np-quote pred"><span class="np-label">새로운 예측</span>${text(s['val.newPrediction'])}</div>`
+        : `<h3 class="np-head">그래서, 결론은?</h3><p class="np-conclusion">${s.validation ? text(s.conclusion) : none}</p>`;
+
+    const img = (url, alt) => (url ? `<img class="np-chart" src="${url}" alt="${alt}">` : `<div class="np-chart empty">${none}</div>`);
+
+    const interview = INTERVIEW_QUESTIONS.map(item => `
+        <div class="np-qa">
+            <p class="np-q">Q. ${escapeHtml(item.q)}</p>
+            ${editable
+                ? `<textarea class="np-answer-input" data-key="${item.key}" rows="3" placeholder="${escapeHtml(item.example)}"></textarea>`
+                : `<p class="np-a">A. ${text(s[item.key])}</p>`}
+        </div>`).join('');
+
+    return `
+    <article class="np">
+        <header class="np-mast">
+            <div class="np-meta"><span>제1호</span><span>${dateText}</span><span>과학탐구실험 특별판</span></div>
+            <h1 class="np-title">${escapeHtml(teamLabel(team))} 과학 일보</h1>
+            <div class="np-slogan">데이터가 말해 주는 생명과학의 진실 · ${theme.icon} ${escapeHtml(theme.title)}</div>
+        </header>
+
+        <section class="np-lead">
+            ${figure}
+            <div class="np-lead-text">
+                <span class="np-kicker">문제 상황</span>
+                <h2 class="np-headline">“${escapeHtml(theme.teaser)}” 미스터리에 도전한 연구팀</h2>
+                <p class="np-story">${escapeHtml(theme.story)}</p>
+                <div class="np-quote problem"><span class="np-label">우리가 풀 미스터리</span>${text(s.problem)}</div>
+            </div>
+        </section>
+
+        <div class="np-grid">
+            <section class="np-col">
+                <h3 class="np-head">그들은 탐구 설계부터 남달랐다</h3>
+                <p class="np-deck">조작 변인 ${nManip}개, 통제 변인 ${theme.vars.length - nManip}개 — 공정한 비교를 위한 치밀한 준비</p>
+                <table class="np-table"><thead><tr><th>변인</th><th>${escapeHtml(cl)}</th><th>${escapeHtml(el)}</th></tr></thead><tbody>${designRows}</tbody></table>
+                <h3 class="np-head">과감한 가설, 대담한 예측</h3>
+                <div class="np-quote"><span class="np-label">가설</span>${text(s.hypothesis || (s['hypo.manip'] ? composeHypothesis(s) : ''))}</div>
+                <div class="np-quote pred"><span class="np-label">예측</span>${text(s.prediction || (s['pred.dir'] ? composePrediction(s, theme) : ''))}</div>
+            </section>
+
+            <section class="np-col">
+                <h3 class="np-head">데이터는 거짓말을 하지 않는다</h3>
+                ${img(chart1Url, '1차 그래프')}
+                <p class="np-caption">그래프를 고른 이유: ${text(reasonSentence(1, s))}</p>
+                <h3 class="np-head">${head2}</h3>
+                ${img(chart2Url, '2차 그래프')}
+                <p class="np-caption">${m ? escapeHtml(summaryText(theme, s)) : none}</p>
+            </section>
+
+            <section class="np-col">
+                <h3 class="np-head">${verdict.head}</h3>
+                <div class="np-stamp ${verdict.cls}">${verdict.stamp}</div>
+                <div class="np-quote"><span class="np-label">판단 근거</span>${text(s['val.evidence'])}</div>
+                ${conclusionBlock}
+            </section>
+        </div>
+
+        <section class="np-interview">
+            <h3 class="np-head">연구팀 단독 인터뷰 — “오차까지 따져 봤습니다”</h3>
+            ${interview}
+        </section>
+    </article>`;
 }

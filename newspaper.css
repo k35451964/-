@@ -1,0 +1,76 @@
+/* ==========================================
+   과학 신문 (학생 화면 · 교사 대시보드 공통)
+   ========================================== */
+.np {
+    background: #fffdf6; color: #1f2933; border: 1px solid #d8d2c0; border-radius: 6px;
+    padding: 28px 30px 30px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    font-family: 'Pretendard', sans-serif;
+}
+.np-mast { text-align: center; border-bottom: 4px double #1f2933; padding-bottom: 12px; margin-bottom: 18px; }
+.np-meta { display: flex; justify-content: space-between; font-size: 12px; color: #5d6d7e; border-bottom: 1px solid #1f2933; padding-bottom: 6px; margin-bottom: 8px; }
+.np-title { font-family: 'Times New Roman', 'Nanum Myeongjo', serif; font-size: 44px; letter-spacing: 2px; margin: 4px 0; color: #111; }
+.np-slogan { font-size: 13px; color: #5d6d7e; font-style: italic; }
+
+.np-lead { display: grid; grid-template-columns: 1fr 1.25fr; gap: 22px; border-bottom: 2px solid #1f2933; padding-bottom: 18px; margin-bottom: 18px; align-items: start; }
+.np-panel { background: #fff; border: 2px solid #1f2933; border-radius: 4px; padding: 14px; text-align: center; }
+.np-panel img { width: 100%; display: block; border-radius: 2px; }
+.np-panel p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+.np-panel .np-emoji { font-size: 48px; line-height: 1.2; }
+.np-panel.big { padding: 22px; }
+.np-panel.big .np-emoji { font-size: 96px; }
+.np-panel.big p { font-size: 16px; font-weight: 700; }
+.np-kicker { display: inline-block; background: #c0392b; color: #fff; font-size: 12px; font-weight: 800; padding: 2px 10px; border-radius: 2px; margin-bottom: 6px; }
+.np-headline { font-family: 'Times New Roman', serif; font-size: 27px; line-height: 1.3; margin: 0 0 10px; color: #111; text-align: left; }
+.np-story { font-size: 14px; line-height: 1.75; margin: 0 0 12px; text-align: justify; }
+
+.np-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.np-col { padding: 0 16px; border-left: 1px solid #c9c2ae; min-width: 0; }
+.np-col:first-child { padding-left: 0; border-left: none; }
+.np-col:last-child { padding-right: 0; }
+.np-head { font-family: 'Times New Roman', serif; font-size: 19px; font-weight: 800; line-height: 1.35; color: #111; border-top: 3px solid #1f2933; padding-top: 8px; margin: 18px 0 8px; text-align: left; }
+.np-col .np-head:first-child { margin-top: 0; }
+.np-deck { font-size: 13px; color: #5d6d7e; margin: 0 0 8px; font-style: italic; }
+.np-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 6px; }
+.np-table th, .np-table td { border-bottom: 1px solid #ddd5c0; padding: 6px 4px; text-align: center; }
+.np-table th { font-size: 12px; color: #5d6d7e; }
+.np-table td:first-child { text-align: left; font-weight: 700; }
+.np-table td small { display: block; font-size: 10px; font-weight: 600; color: #95a5a6; }
+.np-table tr.manip td { color: #c0392b; font-weight: 800; }
+.np-quote { position: relative; background: #fff; border-left: 4px solid #2c3e50; padding: 10px 12px; margin: 8px 0; font-size: 14px; line-height: 1.65; }
+.np-quote.pred { border-left-color: #7d3c98; }
+.np-quote.problem { border-left-color: #c0392b; }
+.np-label { display: block; font-size: 11px; font-weight: 800; color: #7f8c8d; letter-spacing: 1px; margin-bottom: 2px; }
+.np-chart { width: 100%; display: block; border: 1px solid #ddd5c0; background: #fff; }
+.np-chart.empty { padding: 30px 10px; text-align: center; }
+.np-caption { font-size: 12px; color: #5d6d7e; line-height: 1.55; margin: 6px 0 0; font-style: italic; }
+.np-stamp { display: inline-block; font-size: 22px; font-weight: 900; letter-spacing: 2px; border: 4px solid #95a5a6; color: #95a5a6; padding: 6px 16px; transform: rotate(-4deg); margin: 4px 0 8px; border-radius: 4px; }
+.np-stamp.accept { border-color: #1e8449; color: #1e8449; }
+.np-stamp.reject { border-color: #c0392b; color: #c0392b; }
+.np-conclusion { font-family: 'Times New Roman', serif; font-size: 20px; font-weight: 800; line-height: 1.5; margin: 0; color: #111; }
+.np-empty { color: #aab7b8; font-weight: 500; font-style: italic; font-size: 13px; }
+
+.np-interview { border-top: 2px solid #1f2933; margin-top: 20px; padding-top: 4px; }
+.np-interview .np-head { border-top: none; }
+.np-qa { margin: 10px 0 14px; }
+.np-q { font-weight: 800; font-size: 15px; margin: 0 0 6px; color: #1f2933; }
+.np-a { margin: 0; font-size: 14px; line-height: 1.7; white-space: pre-line; }
+.np-answer-input { width: 100%; border: 1px dashed #b9b09a; background: #fffef9; border-radius: 4px; font-size: 14px; line-height: 1.6; padding: 10px; }
+
+@media (max-width: 860px) {
+    .np { padding: 18px 16px; }
+    .np-title { font-size: 30px; }
+    .np-lead { grid-template-columns: 1fr; }
+    .np-grid { grid-template-columns: 1fr; }
+    .np-col { padding: 0; border-left: none; }
+}
+
+/* 학생 화면: 장면 고르기 */
+.panel-picker { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0; }
+.panel-choice { cursor: pointer; }
+.panel-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.panel-choice .np-panel { border: 2px solid #d5dbdb; padding: 8px; transition: 0.15s; }
+.panel-choice .np-panel .np-emoji { font-size: 30px; }
+.panel-choice .np-panel p { font-size: 12px; }
+.panel-choice input:checked + .np-panel { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.2); }
+.newspaper-area { margin-top: 16px; }
+@media (max-width: 760px) { .panel-picker { grid-template-columns: repeat(2, 1fr); } }

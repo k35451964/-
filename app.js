@@ -748,7 +748,9 @@ function buildThemeUI() {
         return `<div class="metric-group"><div class="metric-group-name">${g.name}</div>${list.map(mt => `
             <label class="metric-card"><input type="radio" name="metric" value="${mt.id}" data-key="sum.metric">
                 <span class="metric-name">${escapeHtml(mt.name)}</span><span class="metric-desc">${escapeHtml(mt.desc)}</span></label>`).join('')}</div>`;
-    }).join('');
+    }).join('') + `<div class="metric-group"><div class="metric-group-name">직접 정하기</div>
+            <label class="metric-card custom"><input type="radio" name="metric" value="custom" data-key="sum.metric">
+                <span class="metric-name">✏️ 직접 정한 가공 데이터</span><span class="metric-desc">AI에게 직접 질문해서 구한 값처럼 목록에 없는 데이터 (이름과 모양을 정하고 값을 입력)</span></label></div>`;
     lastSummaryMetric = null;
 
     memIndex = null;
@@ -761,7 +763,7 @@ function buildThemeUI() {
 // 2. 탐구 설계
 // ==========================================
 function currentDesignSig() {
-    return designSignature(team.theme_id, state) + '|' + composeHypothesis(state) + '|' + composePrediction(state);
+    return designSignature(team.theme_id, state) + '|' + composeHypothesis(state) + '|' + composePrediction(state, theme());
 }
 
 function isDesignSubmitted() {
@@ -790,8 +792,14 @@ function refreshDesign() {
         row.classList.toggle('undecided', !mode);
     });
     const dep = (state['hypo.dep'] || '').trim();
-    $('pred-dep').textContent = dep || '(종속 변인)';
+    $('pred-dep').textContent = dep || '종속 변인 (위 가설에 먼저 써 주세요)';
     $('pred-dep').classList.toggle('empty', !dep);
+    const pv = predictionValues(state, th);
+    $('pred-b').textContent = pv.b || '대조군 값 (변인 표에서 정하기)';
+    $('pred-c').textContent = pv.c || '실험군 값 (변인 표에서 정하기)';
+    $('pred-b').classList.toggle('empty', !pv.b);
+    $('pred-c').classList.toggle('empty', !pv.c);
+    $('pred-preview').textContent = `📝 ${composePrediction(state, th)}`;
 
     const check = checkDesign(th, state);
     const box = $('design-check');
@@ -838,13 +846,13 @@ function submitDesign() {
         return;
     }
     if (PRED_KEYS.some(k => !(state[k] || '').trim())) {
-        alert('예측 문장의 빈칸을 모두 채워 주세요!');
+        alert('예측에서 결과가 어떻게 될지(더 클 / 더 작을 / 비슷할) 골라 주세요!');
         return;
     }
     if (check.warnings.length && !confirm(`${check.warnings.join('\n')}\n\n이대로 전송할까요?`)) return;
     setState({
         hypothesis: composeHypothesis(state),
-        prediction: composePrediction(state),
+        prediction: composePrediction(state, th),
         'design.submittedAt': new Date().toISOString(),
         'design.submittedBy': whoAmI(),
         'design.sig': currentDesignSig()
@@ -920,9 +928,9 @@ function renderDevice() {
     } else if (memIndex !== null && memIndex < step) {
         Object.assign(v, {
             phase: 'mem', raw: truth[memIndex], seed: `${team.id}|${target}|${memIndex + 1}`,
-            timeText: `MEM ${memIndex + 1}/${step} · ${labels[memIndex]}`,
+            timeText: `지난 기록 ${memIndex + 1}/${step} · ${labels[memIndex]}`,
             valueHtml: big(fmtNum(truth[memIndex], d)),
-            msgText: '저장된 측정 기록입니다'
+            msgText: '앞에서 측정했던 값입니다'
         });
     } else if (step === 0) {
         Object.assign(v, { phase: 'idle', timeText: `${labels[0]} 측정 대기`, valueHtml: big('--'), msgText: '버튼을 눌러 측정을 시작하세요' });
@@ -983,7 +991,7 @@ function renderDevice() {
     }
     const mem = $('mem-btn');
     mem.disabled = step === 0 || !!busy;
-    mem.textContent = memIndex === null ? 'MEM 기록 보기' : (memIndex + 1 < step ? 'MEM 다음 ▶' : 'MEM 닫기');
+    mem.textContent = memIndex === null ? '📋 지난 측정값 다시 보기' : (memIndex + 1 < step ? '다음 기록 ▶' : '↩ 지금 화면으로');
 
     if (busy && !busyTicker) {
         busyTicker = setInterval(() => {
@@ -1060,7 +1068,7 @@ function drawChartInto(key, kind, canvasId) {
 // ---------- 2차 그래프: 핵심 가공 데이터 ----------
 function renderSummary() {
     const th = theme();
-    const m = metricById(state['sum.metric']);
+    const m = resolveMetric(state);
     document.querySelectorAll('.metric-card').forEach(card =>
         card.classList.toggle('selected', card.querySelector('input').value === state['sum.metric']));
     $('metric-input').hidden = !m;
@@ -1070,11 +1078,12 @@ function renderSummary() {
         return;
     }
     // 고른 데이터가 바뀌었을 때만 입력 표를 새로 만든다 (입력 중인 칸이 사라지지 않게)
-    const sig = `${m.id}|${groupLabel(th, state, 'ctrl')}|${groupLabel(th, state, 'exp')}`;
+    $('custom-fields').hidden = !m.custom;
+    const sig = `${m.id}|${m.group}|${m.name}|${metricUnit(m, th)}|${groupLabel(th, state, 'ctrl')}|${groupLabel(th, state, 'exp')}`;
     if (sig !== lastSummaryMetric) {
         lastSummaryMetric = sig;
         const unit = metricUnit(m, th);
-        $('metric-chosen').innerHTML = `<b>${escapeHtml(m.name)}</b> <span class="muted">(단위: ${escapeHtml(unit)})</span> — ${escapeHtml(m.desc)}`;
+        $('metric-chosen').innerHTML = `<b>${escapeHtml(m.name)}</b> <span class="muted">(단위: ${escapeHtml(unit || '없음')})</span> — ${escapeHtml(m.desc)}`;
         const cols = metricColLabels(m, th);
         $('summary-table').innerHTML = `<thead><tr><th>구분</th>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>`
             + metricRows(m).map(r => `<tr><td class="row-${r === 'e' ? 'exp' : 'ctrl'}">${escapeHtml(metricRowLabel(m, th, state, r))}</td>`
@@ -1090,7 +1099,10 @@ function renderSummary() {
         inp.classList.toggle('match', st === 'ok');
     });
     const box = $('summary-check');
-    if (chk.wrong) {
+    if (m.custom) {
+        box.className = 'summary-check';
+        box.textContent = '직접 정한 데이터는 자동으로 확인하지 않아요. AI 답변이나 직접 계산한 값과 한 번 더 비교해 보세요.';
+    } else if (chk.wrong) {
         box.className = 'summary-check warn';
         box.textContent = `⚠️ 기록표 값으로 계산하면 다른 값이 나오는 칸이 ${chk.wrong}개 있어요(빨간 칸). 계산 방법과 기록표를 다시 확인해 보세요.`;
     } else if (chk.unknown) {
@@ -1152,7 +1164,7 @@ function refreshAnalysis() {
     const th = theme();
     const cl = groupLabel(th, state, 'ctrl'), el = groupLabel(th, state, 'exp');
     $('hypo-recall').textContent = state.hypothesis || composeHypothesis(state);
-    $('pred-recall').textContent = state.prediction || composePrediction(state);
+    $('pred-recall').textContent = state.prediction || composePrediction(state, th);
     $('result-recall').textContent = summaryText(th, state)
         || '(위에서 핵심 가공 데이터를 고르고 값을 입력하면 여기에 표시돼요. 1차 그래프는 위쪽 ‘다시 보기’에서 확인하세요.)';
     $('btn-accept').classList.toggle('selected', state.validation === '수용');
@@ -1255,7 +1267,7 @@ function buildAIContext() {
         labels: th.measure.labels,
         ctrl: readSeries(state, 'c'),
         exp: readSeries(state, 'e'),
-        hypothesis: `${state.hypothesis || composeHypothesis(state)} / 예측: ${state.prediction || composePrediction(state)}`,
+        hypothesis: `${state.hypothesis || composeHypothesis(state)} / 예측: ${state.prediction || composePrediction(state, th)}`,
         ctrlLabel: groupLabel(th, state, 'ctrl'),
         expLabel: groupLabel(th, state, 'exp'),
         teamId: team.id,
@@ -1335,31 +1347,40 @@ function newsChartImage(kind) {
     return url;
 }
 
+let newspaperSig = '';
 function refreshNewspaper() {
-    $('news-title').textContent = `${teamLabel(team)} 과학 일보`;
-    $('news-hypo-text').textContent = state.hypothesis || '(가설 없음)';
-    $('news-pred-text').textContent = state.prediction || '(예측 없음)';
-    [1, 2].forEach(kind => {
-        const img = $(`news-chart${kind}-img`);
-        const url = newsChartImage(kind);
-        img.hidden = !url;
-        if (url && img.src !== url) img.src = url;
-        $(`news-reason${kind}-text`).textContent = kind === 1
-            ? (reasonSentence(1, state) || '(그래프 선택 이유 미작성)')
-            : (summaryText(theme(), state) || '(핵심 가공 데이터 미선택)');
-    });
-    $('news-ai-summary').textContent = lastAIAnswer(messages) || '(AI와 나눈 분석 내용이 없어요)';
-    const val = $('news-val-text');
-    val.textContent = state.validation ? `[가설 ${state.validation}]` : '[미선택]';
-    val.className = `news-val ${state.validation === '수용' ? 'accept' : state.validation === '기각' ? 'reject' : ''}`;
-    $('news-val-detail').innerHTML = validationDetailHtml(state);
-    gateButton('final-submit-btn', 'newspaper-role-note', 'newspaper');
+    const th = theme();
+    // 문제 상황 장면 고르기 (4컷 중 하나)
+    $('np-editor').hidden = !!th.image;
+    const pickerSig = `${team.theme_id}`;
+    if ($('panel-picker').dataset.sig !== pickerSig) {
+        $('panel-picker').dataset.sig = pickerSig;
+        $('panel-picker').innerHTML = th.comic.map((p, i) => `
+            <label class="panel-choice"><input type="radio" name="news-panel" value="${i}" data-key="news.panel">
+                ${comicPanelHtml(th, i)}</label>`).join('');
+        applyStateToDom(['news.panel']);
+    }
+    if (state['news.panel'] === undefined) document.querySelector('input[name="news-panel"][value="0"]').checked = true;
+
+    // 신문은 내용이 바뀔 때만 다시 만든다 (인터뷰를 쓰는 중에 입력칸이 사라지지 않게)
+    const chart1Url = newsChartImage(1);
+    const chart2Url = newsChartImage(2);
+    const sigState = Object.fromEntries(Object.entries(state).filter(([k]) => !k.startsWith('interview.') && !k.startsWith('sim.busy')));
+    const sig = JSON.stringify([sigState, chart1Url.length, chart2Url.length, team.theme_id]);
+    if (sig !== newspaperSig) {
+        newspaperSig = sig;
+        $('newspaper-area').innerHTML = buildNewspaperHtml({ team, theme: th, state, chart1Url, chart2Url, editable: true });
+        applyStateToDom(INTERVIEW_QUESTIONS.map(q => q.key));
+    }
     const btn = $('final-submit-btn');
-    btn.textContent = state['newspaper.submittedAt'] ? '✅ 제출 완료 (고친 뒤 다시 제출할 수 있어요)' : '🚀 최종 신문 발행 및 선생님께 제출';
+    btn.textContent = state['newspaper.submittedAt'] ? '✅ 발행 완료 (고친 뒤 다시 발행할 수 있어요)' : '🚀 최종 신문 발행 및 선생님께 제출';
+    gateButton('final-submit-btn', 'newspaper-role-note', 'newspaper');
 }
 
 function submitNewspaper() {
     if (!canSubmit('newspaper')) return;
+    const blank = INTERVIEW_QUESTIONS.filter(q => !(state[q.key] || '').trim());
+    if (blank.length && !confirm(`인터뷰 답변 ${blank.length}개가 비어 있어요. 그래도 발행할까요?`)) return;
     setState({ 'newspaper.submittedAt': new Date().toISOString(), 'newspaper.submittedBy': whoAmI() }, true);
     toast(`🎉 ${teamLabel(team)}의 과학 신문을 선생님께 제출했어요!`, 'success');
 }

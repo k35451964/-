@@ -271,27 +271,6 @@ textarea { resize: vertical; line-height: 1.5; }
 #btn-reject.selected { background: #c0392b; border-color: #c0392b; color: #fff; }
 
 /* ==========================================
-   5. 과학 신문 (임시 디자인)
-   ========================================== */
-.newspaper-layout { background: #fffdf5; padding: 32px; border: 2px solid var(--navy); }
-.news-header { text-align: center; border-bottom: 5px double var(--navy); margin-bottom: 24px; padding-bottom: 16px; }
-.news-header h1 { font-family: 'Times New Roman', serif; font-size: 38px; margin: 0 0 6px; }
-.news-header p { color: var(--gray); font-style: italic; margin: 0; }
-.news-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-.news-col h3 { border-bottom: 2px solid var(--navy); padding-bottom: 6px; margin-top: 18px; font-family: serif; }
-.news-col img { width: 100%; border: 1px solid #ddd; border-radius: 4px; background: #fff; }
-.news-hypo { background: #ebf5fb; padding: 12px; border-left: 4px solid var(--blue); font-size: 14px; line-height: 1.6; }
-.news-reason { font-size: 13px; color: #555; background: #eee; padding: 10px; border-radius: 5px; font-style: italic; }
-.news-ai { background: #fdf2e9; padding: 12px; border: 1px solid #e67e22; border-radius: 8px; margin-top: 16px; }
-.news-ai h4 { margin: 0 0 8px; color: #d35400; }
-.news-ai p { font-size: 13px; margin: 0; line-height: 1.5; white-space: pre-line; }
-.news-val { display: inline-block; font-size: 22px; font-weight: 800; padding: 8px 18px; border-radius: 30px; border: 2px solid currentColor; margin: 10px 0; color: var(--gray); }
-.news-val.accept { color: var(--green); }
-.news-val.reject { color: #c0392b; }
-#news-conclusion-text { font-size: 14px; line-height: 1.7; }
-.final-submit-btn { border-radius: 10px; margin-top: 30px; }
-
-/* ==========================================
    축하 화면 · 피드백 · 토스트
    ========================================== */
 .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -347,8 +326,6 @@ textarea { resize: vertical; line-height: 1.5; }
     .hypo-row input, .hypo-row input.hypo-wide { width: 100%; }
     .chart-type-container { grid-template-columns: repeat(2, 1fr); }
     .canvas-container { height: 300px; padding: 10px; }
-    .news-columns { grid-template-columns: 1fr; }
-    .newspaper-layout { padding: 18px; }
     .val-buttons { flex-direction: column; }
     #measure-btn { min-width: 0; width: 100%; }
     .action-row .btn { width: 100%; }
@@ -381,8 +358,6 @@ textarea { resize: vertical; line-height: 1.5; }
 .recall-tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--blue-dark); margin-bottom: 6px; }
 .recall-card p { margin: 0; font-size: 15px; line-height: 1.6; font-weight: 600; }
 .field-title small { font-weight: 500; color: var(--gray); font-size: 12px; margin-left: 4px; }
-.news-val-detail h4 { margin: 14px 0 4px; font-size: 14px; }
-.news-val-detail p { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-line; }
 
 /* 이름·역할 */
 .member-form { margin-top: 4px; grid-template-columns: 1fr 1fr; }
@@ -423,3 +398,21 @@ textarea { resize: vertical; line-height: 1.5; }
 .summary-check { font-size: 13px; color: var(--gray); margin: 0 0 12px; }
 .summary-check.warn { color: #b03a2e; font-weight: 700; }
 .summary-check.ok { color: #1e8449; font-weight: 700; }
+
+/* 예측: 자동으로 채워지는 값 + 방향 고르기 */
+.auto-chip { font-weight: 800; border-radius: 8px; padding: 6px 10px; font-size: 15px; }
+.auto-chip.ctrl { background: #eaf0f6; color: var(--navy); }
+.auto-chip.exp { background: #fdecea; color: #c0392b; }
+.auto-chip.empty { background: #f1f5f9; color: #94a3b8; font-weight: 600; font-size: 13px; }
+.dir-choices { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dir-opt { cursor: pointer; }
+.dir-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.dir-opt span { display: inline-block; padding: 10px 16px; border-radius: 10px; border: 2px solid #d8c4f0; background: #fff; font-weight: 800; font-size: 15px; }
+.dir-opt input:checked + span { background: #7d3c98; border-color: #7d3c98; color: #fff; }
+.dir-opt input:disabled + span { opacity: 0.6; cursor: not-allowed; }
+.dir-tail { font-size: 16px; }
+.pred-preview { margin: 4px 0 0; background: #fff; border: 1px dashed #d8c4f0; border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #4a235a; }
+.custom-fields { display: grid; grid-template-columns: 2fr 1.4fr 1fr; gap: 10px; margin-bottom: 8px; }
+.metric-card.custom { border-style: dashed; }
+.ai-custom-hint { margin: 0 0 8px; font-size: 13px; }
+@media (max-width: 760px) { .custom-fields { grid-template-columns: 1fr; } }

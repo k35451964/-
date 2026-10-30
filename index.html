@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웹 기반 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="devices.css">
-    <link rel="stylesheet" href="scenes.css">
+    <link rel="stylesheet" href="style.css?v=20261031a">
+    <link rel="stylesheet" href="newspaper.css?v=20261031a">
+    <link rel="stylesheet" href="devices.css?v=20261031a">
+    <link rel="stylesheet" href="scenes.css?v=20261031a">
 </head>
 <body>
 
@@ -144,30 +145,30 @@
         </div>
 
         <h3 class="section-title">예측</h3>
-        <p class="hint">가설이 맞다면 실험에서 어떤 결과가 나올지 예측해 보자.</p>
+        <p class="hint">가설이 맞다면 실험 결과가 어떻게 나올지 골라 보자. 대조군·실험군 값은 위 변인 표에서 자동으로 가져온다.</p>
         <div class="hypothesis-box prediction-box">
             <div class="hypo-row">
                 <span class="hypo-label">만약</span>
-                <input type="text" id="pred-b" data-key="pred.b" placeholder="예: 햇빛 2시간">
+                <span class="auto-chip ctrl" id="pred-b"></span>
                 <span>대신</span>
-                <input type="text" id="pred-c" data-key="pred.c" placeholder="예: 햇빛 8시간">
+                <span class="auto-chip exp" id="pred-c"></span>
                 <span>을(를) 적용하면,</span>
             </div>
             <div class="hypo-row">
                 <span class="dep-mirror" id="pred-dep">(종속 변인)</span>
-                <span>은(는)</span>
-                <select id="pred-dir" data-key="pred.dir">
-                    <option value="">-- 선택 --</option>
-                    <option value="더 클(많을)">더 클(많을)</option>
-                    <option value="더 작을(적을)">더 작을(적을)</option>
-                    <option value="비슷할">비슷할</option>
-                </select>
-                <span>것이다.</span>
+                <span>은(는) 대조군보다</span>
+            </div>
+            <div class="dir-choices">
+                <label class="dir-opt"><input type="radio" name="pred-dir" value="더 클(많을)" data-key="pred.dir"><span>📈 더 클(많을)</span></label>
+                <label class="dir-opt"><input type="radio" name="pred-dir" value="더 작을(적을)" data-key="pred.dir"><span>📉 더 작을(적을)</span></label>
+                <label class="dir-opt"><input type="radio" name="pred-dir" value="비슷할" data-key="pred.dir"><span>➖ 비슷할</span></label>
+                <span class="dir-tail">것이다.</span>
             </div>
             <div class="hypo-row">
                 <span class="hypo-label">구체적으로 (선택)</span>
                 <input type="text" id="pred-detail" data-key="pred.detail" class="hypo-wide" placeholder="예: 일주일 뒤 키 차이가 2cm 이상 날 것이다">
             </div>
+            <p class="pred-preview" id="pred-preview"></p>
         </div>
         <p class="role-note" id="design-role-note"></p>
 
@@ -199,7 +200,7 @@
             </div>
             <div class="measure-buttons">
                 <button id="measure-btn" class="btn btn-primary btn-round" onclick="measureData()"></button>
-                <button id="mem-btn" class="btn btn-ghost btn-round" onclick="showMemory()" title="이전에 측정한 값을 다시 보기">MEM 기록 보기</button>
+                <button id="mem-btn" class="btn btn-ghost btn-round" onclick="showMemory()" title="앞에서 측정했던 값을 하나씩 다시 보기">📋 지난 측정값 다시 보기</button>
             </div>
             <p class="hint center">기기 화면에 표시된 수치를 아래 표에 <b>직접 기록</b>하자.</p>
         </div>
@@ -256,6 +257,7 @@
             <p class="hint">로우 데이터에서 핵심 결론을 끌어내기 위해 데이터를 가공해 보자. AI에게 계산을 부탁할 수 있다.</p>
             <div class="ai-prompts" id="ai-prompts"></div>
             <div id="ai-chat-box" class="chat-box"></div>
+            <p class="hint ai-custom-hint">💡 직접 질문해서 구한 값이 아래 목록에 없으면, 2차 시각화에서 <b>✏️ 직접 정한 가공 데이터</b>를 골라 그래프를 그릴 수 있어요.</p>
             <form class="ai-input-row" onsubmit="event.preventDefault(); askAI();">
                 <input type="text" id="ai-input" placeholder="직접 질문하거나 위의 추천 버튼을 누르세요." autocomplete="off">
                 <button type="submit" class="btn btn-dark" id="ai-send-btn">전송</button>
@@ -269,6 +271,15 @@
             <div id="metric-list" class="metric-list"></div>
             <div id="metric-input" hidden>
                 <p class="metric-chosen" id="metric-chosen"></p>
+                <div id="custom-fields" class="custom-fields" hidden>
+                    <label class="field"><span>가공 데이터 이름</span><input type="text" id="custom-name" data-key="sum.custom.name" maxlength="30" placeholder="예: 30분까지의 증가량"></label>
+                    <label class="field"><span>데이터 모양</span><select id="custom-shape" data-key="sum.custom.shape">
+                        <option value="pair">두 집단의 값 하나씩</option>
+                        <option value="series">측정 시점마다 두 집단의 값</option>
+                        <option value="ratio">전체 중 두 집단의 비율(%)</option>
+                    </select></label>
+                    <label class="field"><span>단위 (선택)</span><input type="text" id="custom-unit" data-key="sum.custom.unit" maxlength="10" placeholder="예: mg/dL"></label>
+                </div>
                 <div class="table-scroll"><table class="data-table summary-table" id="summary-table"></table></div>
                 <p id="summary-check" class="summary-check"></p>
                 <div class="canvas-container" id="chart-area-2" hidden><canvas id="resultChart2"></canvas></div>
@@ -317,43 +328,17 @@
         </div>
     </section>
 
-    <!-- 5. 과학 신문 (디자인은 추후 개선 예정) -->
+    <!-- 5. 과학 신문 -->
     <section id="newspaper-screen" class="screen">
-        <div class="newspaper-layout">
-            <div class="news-header">
-                <h1 id="news-title">OO조 과학 일보</h1>
-                <p>데이터가 말해 주는 생명과학의 진실, 세상을 놀라게 할 탐구 결과 발표</p>
-            </div>
-            <div class="news-columns">
-                <div class="news-col">
-                    <h3>💡 탐구 가설</h3>
-                    <p id="news-hypo-text" class="news-hypo"></p>
-                    <h3>🔮 예측</h3>
-                    <p id="news-pred-text" class="news-hypo"></p>
-                    <h3>📈 과정 추이 (1차 분석)</h3>
-                    <img id="news-chart1-img" alt="로우 데이터 1차 그래프">
-                    <p id="news-reason1-text" class="news-reason"></p>
-                </div>
-                <div class="news-col">
-                    <h3>📊 결과 요약 (2차 분석)</h3>
-                    <img id="news-chart2-img" alt="가공 데이터 2차 그래프">
-                    <p id="news-reason2-text" class="news-reason"></p>
-                    <div class="news-ai">
-                        <h4>🤖 AI 분석가의 조언</h4>
-                        <p id="news-ai-summary"></p>
-                    </div>
-                </div>
-                <div class="news-col">
-                    <h3>✅ 가설 검증</h3>
-                    <div class="center"><span id="news-val-text" class="news-val"></span></div>
-                    <div id="news-val-detail" class="news-val-detail"></div>
-                    <h3>🤔 기자의 비판적 고찰</h3>
-                    <textarea id="reflection-input" data-key="reflection" rows="6" placeholder="통제하지 못한 변인은 없었는지, 데이터의 한계점과 오차 원인을 비판적으로 작성해 보자."></textarea>
-                </div>
-            </div>
-            <p class="role-note" id="newspaper-role-note"></p>
-            <button class="btn btn-dark btn-block final-submit-btn" id="final-submit-btn" onclick="submitNewspaper()">🚀 최종 신문 발행 및 선생님께 제출</button>
+        <h2>5. 과학 신문 발행</h2>
+        <div class="card soft np-editor" id="np-editor">
+            <p class="field-title">📌 신문 1면에 실을 ‘문제 상황’ 장면을 골라 보자</p>
+            <div id="panel-picker" class="panel-picker"></div>
+            <p class="hint">인터뷰 답변은 신문 아래쪽 인터뷰 칸에 바로 써 보자. 다 쓰면 과학 기자(또는 연구 책임자)가 발행한다.</p>
         </div>
+        <div id="newspaper-area" class="newspaper-area"></div>
+        <p class="role-note" id="newspaper-role-note"></p>
+        <button class="btn btn-dark btn-block final-submit-btn" id="final-submit-btn" onclick="submitNewspaper()">🚀 최종 신문 발행 및 선생님께 제출</button>
     </section>
 </div>
 
@@ -398,12 +383,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="config.js"></script>
-<script src="themes.js"></script>
-<script src="common.js"></script>
-<script src="devices.js"></script>
-<script src="scenes.js"></script>
-<script src="ai.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=20261031a"></script>
+<script src="themes.js?v=20261031a"></script>
+<script src="common.js?v=20261031a"></script>
+<script src="devices.js?v=20261031a"></script>
+<script src="scenes.js?v=20261031a"></script>
+<script src="ai.js?v=20261031a"></script>
+<script src="app.js?v=20261031a"></script>
 </body>
 </html>

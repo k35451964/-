@@ -11,6 +11,7 @@ let onlineByTeam = {};
 let membersByTeam = {};
 let detailId = null;
 let detailSig = '';
+let detailStage = 'all';      // 상세 보기에서 보고 있는 단계 (all = 전체)
 let dashChannel = null;
 let presenceChannel = null;
 let subscribedOnce = false;
@@ -270,6 +271,7 @@ function openDetail(id) {
     document.body.classList.add('no-scroll');
     $('quick-feedback').innerHTML = QUICK_FEEDBACK.map((q, i) => `<button class="chip" onclick="addQuickFeedback(${i})">${escapeHtml(q)}</button>`).join('');
     $('teacher-comment').value = '';
+    renderStageTabs();
     renderDetail(true);
     renderDetailFeedback();
     renderDetailMembers();
@@ -345,6 +347,24 @@ function openStudentView() {
     window.open(`${studentLink()}&team=${t.id}&teacher=1`, '_blank');
 }
 
+const STAGE_TABS = [{ id: 'all', name: '전체' }, ...STAGES.map(st => ({ id: String(st.no), name: `${st.no}. ${st.name}` }))];
+
+function renderStageTabs() {
+    $('stage-tabs').innerHTML = '<span class="stage-tabs-label">단계별 크게 보기</span>' + STAGE_TABS.map(tab =>
+        `<button class="stage-tab ${tab.id === detailStage ? 'active' : ''}" onclick="setDetailStage('${tab.id}')">${tab.name}</button>`).join('');
+}
+
+// 단계를 고르면 그 단계만 크게 보여 준다 (이전·다음 모둠으로 넘겨도 같은 단계를 유지)
+function setDetailStage(stage) {
+    detailStage = stage;
+    $('detail-view').classList.toggle('big', stage !== 'all');
+    $('detail-view').classList.toggle('staged', stage !== 'all');
+    renderStageTabs();
+    renderDetail(true);
+    Object.values(detailCharts).forEach(c => c.resize());
+    $('detail-report').scrollTop = 0;
+}
+
 function closeDetail() {
     detailId = null;
     $('detail-view').hidden = true;
@@ -405,7 +425,14 @@ function buildReport(t, aiMsgs) {
     const m = th.measure;
     const none = '<span class="muted">미작성</span>';
     const text = v => (v && String(v).trim() ? escapeHtml(v) : none);
-    const sec = (title, body, cls = '') => `<section class="rp-sec ${cls}"><h3>${title}</h3>${body}</section>`;
+    // 단계 탭을 고르면 그 단계의 내용만 크게 보여 준다
+    const sec = (title, body, cls = '', stage = 0) => (detailStage === 'all' || Number(detailStage) === stage
+        ? `<section class="rp-sec ${cls}" data-stage="${stage}"><h3>${title}</h3>${body}</section>` : '');
+    if (detailStage === '5') {
+        const chart1Url = s['chart1.type'] ? chartToImage(buildChartConfig(1, s['chart1.type'], th, s)) : '';
+        const chart2Url = s['sum.metric'] ? chartToImage(buildChartConfig(2, null, th, s)) : '';
+        return `<div class="rp-newspaper">${buildNewspaperHtml({ team: t, theme: th, state: s, chart1Url, chart2Url, editable: false })}</div>`;
+    }
 
     // 설계
     const check = checkDesign(th, s);
@@ -418,7 +445,7 @@ function buildReport(t, aiMsgs) {
         ...check.warnings.map(w => `<div class="rp-alert warn">⚠️ ${escapeHtml(w)}</div>`)].join('');
     const submitted = !!s['design.submittedAt'];
     const hypo = submitted ? s.hypothesis : composeHypothesis(s);
-    const pred = submitted ? (s.prediction || composePrediction(s)) : composePrediction(s);
+    const pred = submitted ? (s.prediction || composePrediction(s, th)) : composePrediction(s, th);
     const cl = groupLabel(th, s, 'ctrl'), el = groupLabel(th, s, 'exp');
     const by = key => (s[`${key}.submittedBy`] ? `<span class="rp-by">제출: ${escapeHtml(s[`${key}.submittedBy`])}</span>` : '');
 
@@ -475,21 +502,21 @@ function buildReport(t, aiMsgs) {
 
     return `
     <div class="report-grid">
-        ${sec('1. 문제 인식', `<p>${text(s.problem)}</p>${by('story')}`)}
+        ${sec('1. 문제 인식', `<p>${text(s.problem)}</p>${by('story')}`, '', 1)}
         ${sec('2. 탐구 설계', `
             <table class="rp-table"><thead><tr><th>변인</th><th>방법</th><th>대조군</th><th>실험군</th></tr></thead><tbody>${designRows}</tbody></table>
             ${checkHtml}
             <div class="rp-hypo"><span class="rp-tag ${submitted ? 'ok' : ''}">${submitted ? '전송됨' : '작성 중'}</span> <b>가설</b> ${escapeHtml(hypo)}</div>
-            <div class="rp-hypo pred"><b>예측</b> ${escapeHtml(pred)}</div>${by('design')}`)}
+            <div class="rp-hypo pred"><b>예측</b> ${escapeHtml(pred)}</div>${by('design')}`, '', 2)}
         ${sec(`3. 측정 기록 <small>(${escapeHtml(m.name)}, ${escapeHtml(m.unit)})</small>`, `
             <div class="table-scroll"><table class="rp-table data"><thead><tr><th>구분</th>${m.labels.map(l => `<th>${l}</th>`).join('')}</tr></thead>
             <tbody>${dataRow('c', escapeHtml(cl), 'row-ctrl')}${dataRow('e', escapeHtml(el), 'row-exp')}</tbody></table></div>
-            <p class="hint">빨간 칸: 학생이 기록한 값이 기기 측정값과 다름</p>${by('experiment')}`, 'wide')}
-        ${sec('📈 1차 그래프 (과정의 추이)', chartBlock(1))}
-        ${sec('📊 2차 그래프 (핵심 가공 데이터)', summaryBlock())}
-        ${sec('🤖 AI 데이터 분석', aiLog)}
-        ${sec('✅ 가설 검증 · 결론', `<div class="center">${val}</div><div class="rp-validation">${validationDetailHtml(s)}</div>${by('final')}`)}
-        ${sec('🤔 비판적 고찰', `<p>${text(s.reflection)}</p>${by('newspaper')}`, 'wide')}
+            <p class="hint">빨간 칸: 학생이 기록한 값이 기기 측정값과 다름</p>${by('experiment')}`, 'wide', 3)}
+        ${sec('📈 1차 그래프 (과정의 추이)', chartBlock(1), '', 3)}
+        ${sec('📊 2차 그래프 (핵심 가공 데이터)', summaryBlock(), '', 4)}
+        ${sec('🤖 AI 데이터 분석', aiLog, '', 4)}
+        ${sec('✅ 가설 검증 · 결론', `<div class="center">${val}</div><div class="rp-validation">${validationDetailHtml(s)}</div>${by('final')}`, '', 4)}
+        ${sec('🎤 연구팀 인터뷰', INTERVIEW_QUESTIONS.map(q => `<p class="rp-q">Q. ${escapeHtml(q.q)}</p><p>${text(s[q.key])}</p>`).join('') + by('newspaper'), 'wide', 5)}
     </div>`;
 }
 
@@ -762,6 +789,7 @@ document.addEventListener('keydown', e => {
     if (detailId && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
         if (e.key === 'ArrowRight') moveDetail(1);
         if (e.key === 'ArrowLeft') moveDetail(-1);
+        if (/^[0-5]$/.test(e.key)) setDetailStage(e.key === '0' ? 'all' : e.key);
     }
 });
 
