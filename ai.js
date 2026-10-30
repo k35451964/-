@@ -16,7 +16,8 @@ const AI_ERROR_NOTES = {
 async function getAIAnswer(question, ctx) {
     const local = ruleBasedAnswer(question, ctx);
     // Gemini가 숫자를 틀리지 않도록, 모든 통계를 미리 계산해서 함께 보낸다
-    const stats = ruleBasedAnswer('최대 변화량 최종 시점 평균 처음 대비 변화율', ctx);
+    const stats = ruleBasedAnswer('최대 변화량 최종 시점 평균 처음 대비 변화율', ctx)
+        + '\n' + metricsForTheme(ctx.themeId).filter(m => SPECIAL_METRICS[m.id]).map(m => metricAnswerLines(m, ctx).join('\n')).join('\n');
     try {
         const call = sb.functions.invoke('ai-assistant', {
             body: { team_id: ctx.teamId, question, context: { ...ctx, stats } }
@@ -41,6 +42,34 @@ function cleanAIText(text) {
         .replace(/^\s*[-*]\s+/gm, '• ')
         .replace(/`/g, '')
         .trim();
+}
+
+// 시점별 차이·변화율 추이·생존율 등 2차 그래프용 가공 데이터 질문 (질문 → 가공 데이터 id)
+const SPECIAL_METRICS = {
+    diffSeries: /((시점|시간)\s*(별|마다)|각\s*(측정\s*)?시점).*차이/,
+    rateSeries: /((시점|시간)\s*(별|마다)|각\s*(측정\s*)?시점).*변화율/,
+    peakTime: /가장 높았던 (시점|때|날)|최고점.*(언제|시점)|언제.*가장 높/,
+    survival: /생존율/,
+    fold: /배수|몇\s*배/,
+    share: /구성\s*비율|차지하는\s*비율/,
+    inhibition: /억제율/
+};
+
+// 가공 데이터 하나를 기록표 값으로 계산해 설명하는 줄들
+function metricAnswerLines(m, ctx) {
+    const th = THEMES[ctx.themeId];
+    const d = metricDecimals(m, th);
+    const unit = metricUnit(m, th);
+    const fmt = x => (x === null || x === undefined ? '계산 불가(빈칸 확인)' : `${fmtNum(x, d)}${unit === '%' ? '%' : ` ${unit}`}`);
+    const result = m.compute(ctx.ctrl, ctx.exp, th);
+    const rowName = r => (r === 'c' ? ctx.ctrlLabel || '대조군' : r === 'e' ? ctx.expLabel || '실험군' : r === 'd' ? '차이(실험군 − 대조군)' : m.name);
+    const lines = [`📐 ${m.name}`, `  계산 방법: ${m.desc}`];
+    metricRows(m).forEach(r => {
+        const vals = result[r] || [];
+        if (metricCols(m) === 5) lines.push(`• ${rowName(r)}: ${ctx.labels.map((l, i) => `${l} ${vals[i] === null ? '?' : fmtNum(vals[i], d)}`).join(', ')}${unit === '%' ? ' (%)' : ''}`);
+        else lines.push(`• ${rowName(r)}: ${fmt(vals[0])}`);
+    });
+    return lines;
 }
 
 function ruleBasedAnswer(question, ctx) {
@@ -71,7 +100,27 @@ function ruleBasedAnswer(question, ctx) {
     if (!intents.includes('range') && /최댓값|최대값|최고|가장 높|정점|피크/.test(q)) intents.push('max');
     if (!intents.includes('range') && /최솟값|최소값|최저|가장 낮/.test(q)) intents.push('min');
     if (/가설|수용|기각|맞아|맞을까|정답/.test(q)) intents.push('hypo');
+
+    // 2차 그래프용 특별 가공 데이터를 물으면 그것만 답한다 (비슷한 낱말 때문에 다른 계산이 섞이지 않게)
+    const special = Object.keys(SPECIAL_METRICS).filter(id => SPECIAL_METRICS[id].test(q));
+    if (special.length) {
+        const available = metricsForTheme(ctx.themeId);
+        const lines = [];
+        special.forEach(id => {
+            const m = available.find(x => x.id === id);
+            if (m) lines.push(...metricAnswerLines(m, ctx));
+            else lines.push(`🤔 '${metricById(id).name}'은(는) 이 실험에 맞지 않는 계산이에요. 다른 가공 데이터를 골라 보세요.`);
+        });
+        if (intents.includes('hypo')) lines.push('🧑‍🔬 가설을 받아들일지(수용) 버릴지(기각)는 여러분이 데이터를 근거로 판단해야 해요!');
+        lines.push('💡 이 값을 2차 그래프 표에 직접 입력해 보세요.');
+        return lines.join('\n');
+    }
     if (intents.length === 0 && /차이|비교/.test(q)) intents.push('final');
+    // '처음 대비 변화량/변화율'의 '마지막'은 최종 시점 질문이 아니다
+    if ((intents.includes('change') || intents.includes('rate')) && /처음/.test(q)) {
+        const i = intents.indexOf('final');
+        if (i >= 0) intents.splice(i, 1);
+    }
 
     if (intents.length === 0) {
         return [
@@ -131,7 +180,7 @@ function ruleBasedAnswer(question, ctx) {
             lines.push('🧮 평균 (입력된 값의 합 ÷ 개수)');
             S.forEach((s, i) => {
                 if (!s) return lines.push(`• ${groups[i].name}: 데이터 없음`);
-                lines.push(`• ${groups[i].name}: ${f(s.mean)} ${u} (${s.pts.length}개 값)`);
+                lines.push(`• ${groups[i].name}: ${fmtNum(s.mean, d + 1)} ${u} (${s.pts.length}개 값)`);
             });
             if (S[0] && S[1]) lines.push(compare(S[0].mean, S[1].mean, '평균'));
         }
@@ -169,7 +218,7 @@ function ruleBasedAnswer(question, ctx) {
     }
 
     if (intents.some(i => ['range', 'final', 'mean', 'change', 'rate'].includes(i))) {
-        lines.push('💡 이 중 결론을 가장 잘 보여 주는 값을 골라 아래 요약표에 적어 보세요.');
+        lines.push('💡 이 중 결론을 가장 잘 보여 주는 값을 골라 2차 그래프 표에 적어 보세요.');
     }
     return lines.join('\n');
 }

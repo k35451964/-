@@ -30,6 +30,7 @@ let busyTicker = null;
 const busySeenAt = {};
 let lastDeviceHtml = '';
 let lastSceneHtml = '';
+let lastSummaryMetric = null;
 // 측정 애니메이션 시간: 첫 측정은 실험 장면을 길게, 그다음부터는 짧게
 const MEASURE_TIME = { long: { phase1: 2200, total: 4300 }, short: { phase1: 1000, total: 2500 } };
 const busyTiming = b => (b && b.long ? MEASURE_TIME.long : MEASURE_TIME.short);
@@ -733,6 +734,23 @@ function buildThemeUI() {
     $('data-row-c').innerHTML = '<td class="row-ctrl" id="data-label-c">대조군</td>' + cells('c');
     $('data-row-e').innerHTML = '<td class="row-exp" id="data-label-e">실험군</td>' + cells('e');
 
+    // AI 추천 질문 + 핵심 가공 데이터 목록 (테마마다 다름)
+    const metrics = metricsForTheme(team.theme_id);
+    $('ai-prompts').innerHTML = metrics.map(mt =>
+        `<button class="ai-prompt-btn" data-prompt="${escapeHtml(mt.prompt)}">💡 ${escapeHtml(mt.name)}</button>`).join('');
+    $('ai-prompts').onclick = e => {
+        const b = e.target.closest('.ai-prompt-btn');
+        if (b) fillAIPrompt(b.dataset.prompt);
+    };
+    $('metric-list').innerHTML = METRIC_GROUPS.map(g => {
+        const list = metrics.filter(mt => mt.group === g.id);
+        if (!list.length) return '';
+        return `<div class="metric-group"><div class="metric-group-name">${g.name}</div>${list.map(mt => `
+            <label class="metric-card"><input type="radio" name="metric" value="${mt.id}" data-key="sum.metric">
+                <span class="metric-name">${escapeHtml(mt.name)}</span><span class="metric-desc">${escapeHtml(mt.desc)}</span></label>`).join('')}</div>`;
+    }).join('');
+    lastSummaryMetric = null;
+
     memIndex = null;
     lastDeviceHtml = '';
     lastSceneHtml = '';
@@ -1026,7 +1044,7 @@ function destroyAllCharts() {
 
 // key: 그래프 인스턴스 이름, kind: 1(로우) / 2(가공)
 function drawChartInto(key, kind, canvasId) {
-    const type = state[`chart${kind}.type`];
+    const type = kind === 1 ? state['chart1.type'] : null;
     const cfg = buildChartConfig(kind, type, theme(), state);
     const existing = charts[key];
     if (existing && existing.config.type === cfg.type) {
@@ -1037,6 +1055,60 @@ function drawChartInto(key, kind, canvasId) {
         destroyChart(key);
         charts[key] = new Chart($(canvasId), cfg);
     }
+}
+
+// ---------- 2차 그래프: 핵심 가공 데이터 ----------
+function renderSummary() {
+    const th = theme();
+    const m = metricById(state['sum.metric']);
+    document.querySelectorAll('.metric-card').forEach(card =>
+        card.classList.toggle('selected', card.querySelector('input').value === state['sum.metric']));
+    $('metric-input').hidden = !m;
+    if (!m) {
+        destroyChart(2);
+        lastSummaryMetric = null;
+        return;
+    }
+    // 고른 데이터가 바뀌었을 때만 입력 표를 새로 만든다 (입력 중인 칸이 사라지지 않게)
+    const sig = `${m.id}|${groupLabel(th, state, 'ctrl')}|${groupLabel(th, state, 'exp')}`;
+    if (sig !== lastSummaryMetric) {
+        lastSummaryMetric = sig;
+        const unit = metricUnit(m, th);
+        $('metric-chosen').innerHTML = `<b>${escapeHtml(m.name)}</b> <span class="muted">(단위: ${escapeHtml(unit)})</span> — ${escapeHtml(m.desc)}`;
+        const cols = metricColLabels(m, th);
+        $('summary-table').innerHTML = `<thead><tr><th>구분</th>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>`
+            + metricRows(m).map(r => `<tr><td class="row-${r === 'e' ? 'exp' : 'ctrl'}">${escapeHtml(metricRowLabel(m, th, state, r))}</td>`
+                + cols.map((_, i) => `<td><input type="number" step="any" inputmode="decimal" class="data-input" data-key="${summaryKey(m.id, r, i)}"></td>`).join('')
+                + '</tr>').join('') + '</tbody>';
+        applyStateToDom(metricRows(m).flatMap(r => cols.map((_, i) => summaryKey(m.id, r, i))));
+    }
+    // 입력값 확인 (정답은 알려 주지 않고, 다른 칸만 표시)
+    const chk = summaryCheck(th, state);
+    document.querySelectorAll('#summary-table input').forEach(inp => {
+        const st = chk.status[inp.dataset.key];
+        inp.classList.toggle('mismatch', st === 'wrong');
+        inp.classList.toggle('match', st === 'ok');
+    });
+    const box = $('summary-check');
+    if (chk.wrong) {
+        box.className = 'summary-check warn';
+        box.textContent = `⚠️ 기록표 값으로 계산하면 다른 값이 나오는 칸이 ${chk.wrong}개 있어요(빨간 칸). 계산 방법과 기록표를 다시 확인해 보세요.`;
+    } else if (chk.unknown) {
+        box.className = 'summary-check';
+        box.textContent = '기록표에 빈칸이 있어서 입력한 값이 맞는지 확인할 수 없어요.';
+    } else if (!chk.empty) {
+        box.className = 'summary-check ok';
+        box.textContent = '✅ 기록표 값으로 계산한 결과와 일치해요.';
+    } else {
+        box.className = 'summary-check';
+        box.textContent = 'AI 어시스턴트와 함께 값을 구해서 표를 채워 보자.';
+    }
+    // 값이 하나라도 있으면 그래프를 자동으로 그린다
+    const hasValue = Object.values(chk.entered).some(arr => arr.some(x => x !== null));
+    $('chart-area-2').hidden = !hasValue;
+    $('chart-why').textContent = hasValue ? summaryChartWhy(state) : '';
+    if (hasValue && viewStage === 4) drawChartInto(2, 2, 'resultChart2');
+    else if (!hasValue) destroyChart(2);
 }
 
 function renderChart(kind) {
@@ -1069,8 +1141,8 @@ function finishExperiment() {
 // 4. 데이터 분석 (AI) + 2차 그래프 + 가설 검증
 // ==========================================
 function refreshAnalysis() {
+    renderSummary();
     if (viewStage === 4) {
-        renderChart(2);
         const hasChart1 = !!state['chart1.type'];
         $('ref-chart-area').hidden = !hasChart1;
         $('ref-chart-empty').hidden = hasChart1;
@@ -1079,14 +1151,10 @@ function refreshAnalysis() {
     }
     const th = theme();
     const cl = groupLabel(th, state, 'ctrl'), el = groupLabel(th, state, 'exp');
-    $('summary-label-c').textContent = cl;
-    $('summary-label-e').textContent = el;
     $('hypo-recall').textContent = state.hypothesis || composeHypothesis(state);
     $('pred-recall').textContent = state.prediction || composePrediction(state);
-    const c = toNum(state['summary.c']), e = toNum(state['summary.e']);
-    $('result-recall').textContent = c === null || e === null
-        ? '(위의 요약표를 채우면 여기에 표시돼요. 1차 그래프는 위쪽 ‘다시 보기’에서 확인하세요.)'
-        : `${state['summary.label'] || '핵심 수치'} — ${cl}: ${c} / ${el}: ${e}`;
+    $('result-recall').textContent = summaryText(th, state)
+        || '(위에서 핵심 가공 데이터를 고르고 값을 입력하면 여기에 표시돼요. 1차 그래프는 위쪽 ‘다시 보기’에서 확인하세요.)';
     $('btn-accept').classList.toggle('selected', state.validation === '수용');
     $('btn-reject').classList.toggle('selected', state.validation === '기각');
     $('val-fields').hidden = !state.validation;
@@ -1110,9 +1178,10 @@ function finishAnalysis() {
         return;
     }
     const missing = [];
-    if (toNum(state['summary.c']) === null || toNum(state['summary.e']) === null) missing.push('요약표');
-    if (!state['chart2.type']) missing.push('2차 그래프');
-    if (!state['reason2.1'] || !state['reason2.2']) missing.push('2차 그래프 선택 이유');
+    const chk = summaryCheck(theme(), state);
+    if (!chk) missing.push('핵심 가공 데이터 선택');
+    else if (chk.empty) missing.push('핵심 가공 데이터 값');
+    else if (chk.wrong && !confirm(`핵심 가공 데이터 중 기록표로 계산한 값과 다른 칸이 ${chk.wrong}개 있어요.\n그래도 제출할까요?`)) return;
     if (missing.length && !confirm(`아직 ${missing.join(', ')}이(가) 완성되지 않았어요.\n그래도 제출할까요?`)) return;
     setState({ 'final.submittedAt': new Date().toISOString(), 'final.submittedBy': whoAmI() }, true);
     advance(5);
@@ -1190,6 +1259,7 @@ function buildAIContext() {
         ctrlLabel: groupLabel(th, state, 'ctrl'),
         expLabel: groupLabel(th, state, 'exp'),
         teamId: team.id,
+        themeId: team.theme_id,
         ctrlConditions: conditionText(th, state, 'ctrl'),
         expConditions: conditionText(th, state, 'exp')
     };
@@ -1255,10 +1325,10 @@ function toggleFeedbackPanel(force) {
 // 5. 과학 신문 (디자인은 추후 개선 예정)
 // ==========================================
 function newsChartImage(kind) {
-    const type = state[`chart${kind}.type`];
+    const type = kind === 1 ? state['chart1.type'] : state['sum.metric'];
     if (!type) return '';
     const cfg = buildChartConfig(kind, type, theme(), state);
-    const sig = JSON.stringify([type, cfg.data, kind === 2 ? state['summary.label'] : '']);
+    const sig = JSON.stringify([type, cfg.data, cfg.options && cfg.options.scales ? cfg.options.scales.y : '']);
     if (newsImageCache[kind] && newsImageCache[kind].sig === sig) return newsImageCache[kind].url;
     const url = chartToImage(cfg);
     newsImageCache[kind] = { sig, url };
@@ -1274,7 +1344,9 @@ function refreshNewspaper() {
         const url = newsChartImage(kind);
         img.hidden = !url;
         if (url && img.src !== url) img.src = url;
-        $(`news-reason${kind}-text`).textContent = reasonSentence(kind, state) || '(그래프 선택 이유 미작성)';
+        $(`news-reason${kind}-text`).textContent = kind === 1
+            ? (reasonSentence(1, state) || '(그래프 선택 이유 미작성)')
+            : (summaryText(theme(), state) || '(핵심 가공 데이터 미선택)');
     });
     $('news-ai-summary').textContent = lastAIAnswer(messages) || '(AI와 나눈 분석 내용이 없어요)';
     const val = $('news-val-text');

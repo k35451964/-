@@ -254,12 +254,7 @@
         <div id="ai-section" class="ai-section">
             <h3>🤖 AI 데이터 분석 어시스턴트</h3>
             <p class="hint">로우 데이터에서 핵심 결론을 끌어내기 위해 데이터를 가공해 보자. AI에게 계산을 부탁할 수 있다.</p>
-            <div class="ai-prompts">
-                <button class="ai-prompt-btn" onclick="fillAIPrompt('대조군과 실험군의 최대 변화량(최댓값-최솟값)을 각각 계산해 줘.')">💡 최대 변화량 구하기</button>
-                <button class="ai-prompt-btn" onclick="fillAIPrompt('최종 시점(마지막 측정)에서 두 집단 간 수치 차이를 비교해 줘.')">💡 최종 시점 차이 구하기</button>
-                <button class="ai-prompt-btn" onclick="fillAIPrompt('대조군과 실험군의 평균을 각각 구해 줘.')">💡 평균 구하기</button>
-                <button class="ai-prompt-btn" onclick="fillAIPrompt('처음 측정값 대비 마지막 측정값의 변화율(%)을 구해 줘.')">💡 변화율(%) 구하기</button>
-            </div>
+            <div class="ai-prompts" id="ai-prompts"></div>
             <div id="ai-chat-box" class="chat-box"></div>
             <form class="ai-input-row" onsubmit="event.preventDefault(); askAI();">
                 <input type="text" id="ai-input" placeholder="직접 질문하거나 위의 추천 버튼을 누르세요." autocomplete="off">
@@ -267,61 +262,17 @@
             </form>
         </div>
 
-        <!-- 2차 시각화 -->
+        <!-- 2차 시각화: 핵심 가공 데이터 -->
         <div id="chart2-section" class="chart-section">
-            <h3 class="section-title">2차 시각화: 가공 데이터 (핵심 결과 요약)</h3>
-            <p class="hint">AI와 함께 찾아낸 핵심 가공 데이터를 요약표에 적고, 두 번째 그래프를 그려 보자.</p>
-
-            <div class="table-scroll">
-                <table class="data-table summary-table">
-                    <thead>
-                        <tr><th>구분</th><th>
-                            <input type="text" id="summary-label" data-key="summary.label" list="summary-label-list" placeholder="가공 데이터 이름 (예: 최대 변화량)">
-                            <datalist id="summary-label-list">
-                                <option value="최대 변화량"></option>
-                                <option value="최종 시점 값"></option>
-                                <option value="평균"></option>
-                                <option value="처음 대비 변화량"></option>
-                                <option value="처음 대비 변화율(%)"></option>
-                            </datalist>
-                        </th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td class="row-ctrl" id="summary-label-c">대조군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-c" data-key="summary.c" placeholder="예: 55"></td></tr>
-                        <tr><td class="row-exp" id="summary-label-e">실험군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-e" data-key="summary.e" placeholder="예: 3"></td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="chart-type-container" data-kind="2">
-                <button class="chart-btn" data-type="line" onclick="chooseChart(2, 'line')">📈 선 그래프</button>
-                <button class="chart-btn" data-type="bar" onclick="chooseChart(2, 'bar')">📊 막대그래프</button>
-                <button class="chart-btn" data-type="pie" onclick="chooseChart(2, 'pie')">🍕 원그래프</button>
-                <button class="chart-btn" data-type="scatter" onclick="chooseChart(2, 'scatter')">✨ 분산형 그래프</button>
-            </div>
-            <div class="canvas-container" id="chart-area-2" hidden><canvas id="resultChart2"></canvas></div>
-            <p class="chart-note" id="chart-note-2"></p>
-
-            <div class="reason-box">
-                <p class="reason-q">이 그래프를 2차 그래프로 선택한 이유는 무엇인가?</p>
-                <div class="reason-sentence">
-                    "우리가 가공한 핵심 데이터는
-                    <select id="reason2-1" data-key="reason2.1">
-                        <option value="">-- 데이터 특징 선택 --</option>
-                        <option value="집단 간의 최종 결과 크기 비교">집단 간의 최종 결과 크기 비교</option>
-                        <option value="두 집단이 전체에서 차지하는 비율">두 집단이 전체에서 차지하는 비율</option>
-                        <option value="데이터의 연속적인 변화 추이">데이터의 연속적인 변화 추이</option>
-                    </select>
-                    을(를) 강조해야 하므로, 이를 가장 잘 보여주는
-                    <select id="reason2-2" data-key="reason2.2">
-                        <option value="">-- 그래프 종류 선택 --</option>
-                        <option value="막대그래프">막대그래프</option>
-                        <option value="원그래프">원그래프</option>
-                        <option value="선 그래프">선 그래프</option>
-                        <option value="분산형 그래프">분산형 그래프</option>
-                    </select>
-                    를(을) 선택했다."
-                </div>
+            <h3 class="section-title">2차 시각화: 핵심 가공 데이터 (결과 요약)</h3>
+            <p class="hint">AI와 함께 데이터를 가공해 보고, <b>우리 결론을 가장 잘 보여 주는 핵심 가공 데이터</b>를 하나 고르자. 값을 입력하면 알맞은 그래프가 자동으로 그려진다.</p>
+            <div id="metric-list" class="metric-list"></div>
+            <div id="metric-input" hidden>
+                <p class="metric-chosen" id="metric-chosen"></p>
+                <div class="table-scroll"><table class="data-table summary-table" id="summary-table"></table></div>
+                <p id="summary-check" class="summary-check"></p>
+                <div class="canvas-container" id="chart-area-2" hidden><canvas id="resultChart2"></canvas></div>
+                <p class="chart-note" id="chart-why"></p>
             </div>
         </div>
 

@@ -404,3 +404,22 @@ textarea { resize: vertical; line-height: 1.5; }
     .member-form { grid-template-columns: 1fr; }
     .chart-desc { font-size: 11px; }
 }
+
+/* 2차 그래프: 핵심 가공 데이터 고르기 */
+.metric-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.metric-group-name { font-size: 13px; font-weight: 800; color: var(--gray); margin-bottom: 6px; }
+.metric-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.metric-group-name { grid-column: 1 / -1; margin-bottom: 0; }
+.metric-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; transition: 0.15s; }
+.metric-card:hover { border-color: #9cc9ea; }
+.metric-card.selected { border-color: var(--blue); background: #ebf5fb; box-shadow: 0 3px 10px rgba(52, 152, 219, 0.18); }
+.metric-card input { position: absolute; opacity: 0; pointer-events: none; }
+.metric-name { font-weight: 800; font-size: 14px; }
+.metric-desc { font-size: 12px; color: #64748b; line-height: 1.45; }
+.metric-chosen { background: var(--soft); border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.6; margin: 0 0 10px; }
+#summary-table { max-width: none; }
+.data-input.mismatch { border-color: #e74c3c; background: #fdecea; }
+.data-input.match { border-color: #2ecc71; }
+.summary-check { font-size: 13px; color: var(--gray); margin: 0 0 12px; }
+.summary-check.warn { color: #b03a2e; font-weight: 700; }
+.summary-check.ok { color: #1e8449; font-weight: 700; }

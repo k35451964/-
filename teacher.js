@@ -387,7 +387,7 @@ function renderDetail(force = false) {
     if (th) {
         const s = t.state || {};
         [1, 2].forEach(kind => {
-            const type = s[`chart${kind}.type`];
+            const type = kind === 1 ? s['chart1.type'] : s['sum.metric'];
             const canvas = $(`rp-chart${kind}`);
             if (!type || !canvas) return;
             const cfg = buildChartConfig(kind, type, th, s);
@@ -444,6 +444,26 @@ function buildReport(t, aiMsgs) {
             <p class="rp-reason">${escapeHtml(reasonSentence(kind, s)) || none}</p>`;
     };
 
+    // 핵심 가공 데이터: 학생 입력값 + 기록표로 계산한 값(교사에게만 보임)
+    const summaryBlock = () => {
+        const chk = summaryCheck(th, s);
+        if (!chk) return '<p class="muted">아직 핵심 가공 데이터를 고르지 않았어요.</p>';
+        const mt = chk.metric;
+        const d = metricDecimals(mt, th);
+        const cols = metricColLabels(mt, th);
+        const rows = metricRows(mt).map(r => `<tr><td class="row-${r === 'e' ? 'exp' : 'ctrl'}">${escapeHtml(metricRowLabel(mt, th, s, r))}</td>${cols.map((_, i) => {
+            const key = summaryKey(mt.id, r, i);
+            const v = chk.entered[r][i];
+            const exp = chk.expected[r] ? chk.expected[r][i] : null;
+            return `<td class="${chk.status[key] === 'wrong' ? 'wrong' : ''}">${v === null ? '<span class="muted">-</span>' : v}
+                ${exp !== null && exp !== undefined ? `<small class="real">계산 ${fmtNum(exp, d)}</small>` : ''}</td>`;
+        }).join('')}</tr>`).join('');
+        return `<div class="rp-chart-type">${escapeHtml(mt.name)} <small class="muted">(${escapeHtml(metricUnit(mt, th))})</small></div>
+            <div class="table-scroll"><table class="rp-table data"><thead><tr><th>구분</th>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+            ${chk.wrong ? `<p class="hint">빨간 칸: 기록표 값으로 계산한 값과 다름 (${chk.wrong}칸)</p>` : ''}
+            <div class="rp-chart"><canvas id="rp-chart2"></canvas></div>`;
+    };
+
     const aiLog = aiMsgs.length
         ? `<details class="rp-ai"><summary>AI와 나눈 대화 ${aiMsgs.length}개 보기</summary>${aiMsgs.map(x =>
             `<div class="bubble ${x.role === 'student' ? 'me' : 'ai'}">${escapeHtml(x.content)}</div>`).join('')}</details>`
@@ -466,10 +486,7 @@ function buildReport(t, aiMsgs) {
             <tbody>${dataRow('c', escapeHtml(cl), 'row-ctrl')}${dataRow('e', escapeHtml(el), 'row-exp')}</tbody></table></div>
             <p class="hint">빨간 칸: 학생이 기록한 값이 기기 측정값과 다름</p>${by('experiment')}`, 'wide')}
         ${sec('📈 1차 그래프 (과정의 추이)', chartBlock(1))}
-        ${sec('📊 2차 그래프 (결과의 요약)', `
-            <table class="rp-table"><thead><tr><th>구분</th><th>${text(s['summary.label'])}</th></tr></thead>
-            <tbody><tr><td class="row-ctrl">${escapeHtml(cl)}</td><td>${text(s['summary.c'])}</td></tr><tr><td class="row-exp">${escapeHtml(el)}</td><td>${text(s['summary.e'])}</td></tr></tbody></table>
-            ${chartBlock(2)}`)}
+        ${sec('📊 2차 그래프 (핵심 가공 데이터)', summaryBlock())}
         ${sec('🤖 AI 데이터 분석', aiLog)}
         ${sec('✅ 가설 검증 · 결론', `<div class="center">${val}</div><div class="rp-validation">${validationDetailHtml(s)}</div>${by('final')}`)}
         ${sec('🤔 비판적 고찰', `<p>${text(s.reflection)}</p>${by('newspaper')}`, 'wide')}

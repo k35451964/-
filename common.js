@@ -242,7 +242,7 @@ function lastAIAnswer(messages) {
 // kind 1: 시간에 따른 로우 데이터 / kind 2: 가공 데이터(대조군 vs 실험군 2개 값)
 function buildChartConfig(kind, type, theme, state) {
     const m = theme.measure;
-    const yTitle = kind === 1 ? `${m.name} (${m.unit})` : (state['summary.label'] || '가공 데이터');
+    const yTitle = `${m.name} (${m.unit})`;
     const cl = groupLabel(theme, state, 'ctrl');
     const el = groupLabel(theme, state, 'exp');
     const common = {
@@ -298,52 +298,13 @@ function buildChartConfig(kind, type, theme, state) {
         };
     }
 
-    // kind 2
-    const c = toNum(state['summary.c']);
-    const e = toNum(state['summary.e']);
-    const labels = [cl, el];
-    if (type === 'bar') {
-        return {
-            type: 'bar',
-            data: { labels, datasets: [{ label: yTitle, data: [c, e], backgroundColor: [COLOR_CTRL, COLOR_EXP] }] },
-            options: { ...common, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: yTitle } } } }
-        };
-    }
-    if (type === 'pie') {
-        return {
-            type: 'pie',
-            data: { labels, datasets: [{ data: [c, e], backgroundColor: [COLOR_CTRL, COLOR_EXP] }] },
-            options: { ...common, plugins: { ...common.plugins, title: { display: true, text: yTitle } } }
-        };
-    }
-    if (type === 'line') {
-        return {
-            type: 'line',
-            data: { labels, datasets: [{ label: yTitle, data: [c, e], borderColor: '#7f8c8d', pointBackgroundColor: [COLOR_CTRL, COLOR_EXP], pointRadius: 7 }] },
-            options: { ...common, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: yTitle } } } }
-        };
-    }
-    return {
-        type: 'scatter',
-        data: { datasets: [{ label: yTitle, data: [c === null ? null : { x: 0, y: c }, e === null ? null : { x: 1, y: e }].filter(Boolean), backgroundColor: [COLOR_CTRL, COLOR_EXP], pointRadius: 8 }] },
-        options: {
-            ...common,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { type: 'linear', min: -0.5, max: 1.5, ticks: { stepSize: 1, callback: v => labels[v] ?? '' } },
-                y: { title: { display: true, text: yTitle } }
-            }
-        }
-    };
+    // kind 2: 학생이 고른 핵심 가공 데이터에 맞는 그래프를 자동으로 그린다
+    return buildSummaryChart(theme, state, common);
 }
 
 // 그래프가 무엇을 보여 주는지에 대한 사실 설명 (판단은 학생 몫)
 function chartNote(kind, type, state) {
     if (type === 'pie' && kind === 1) return '이 원그래프는 마지막 측정 시점의 두 값만 나타냅니다.';
-    if (type === 'pie' && kind === 2) {
-        const c = toNum(state['summary.c']), e = toNum(state['summary.e']);
-        if ((c !== null && c < 0) || (e !== null && e < 0)) return '원그래프는 음수 값을 조각으로 나타낼 수 없습니다.';
-    }
     return '';
 }
 
@@ -377,4 +338,208 @@ function chartToImage(config, width = 720, height = 440) {
     chart.destroy();
     holder.remove();
     return url;
+}
+
+// ==========================================
+// 2차 그래프: 핵심 가공 데이터
+// ------------------------------------------
+// group  : pair(두 집단 비교 → 막대) / series(시간에 따른 변화 → 선) / ratio(비율 → 원)
+// rows   : 입력 표의 줄 (c 대조군, e 실험군, d 두 집단의 차이, s 하나의 값)
+// cols   : 1(값 하나) 또는 5(측정 시점마다)
+// compute: 학생 기록표 값으로 계산한 '확인용' 값 (학생에게 정답을 보여 주지는 않고, 다른지 여부만 알려 줌)
+// ==========================================
+const METRIC_GROUPS = [
+    { id: 'pair', name: '두 집단 비교', chart: 'bar', why: '두 집단의 값 하나씩을 크기로 비교하는 데이터라서 막대그래프로 그렸어요.' },
+    { id: 'series', name: '시간에 따른 변화', chart: 'line', why: '측정 시점(순서)에 따라 값이 어떻게 달라지는지 보여 주는 데이터라서 선 그래프로 그렸어요.' },
+    { id: 'ratio', name: '비율', chart: 'pie', why: '전체에서 각 부분이 차지하는 비율을 나타내는 데이터라서 원그래프로 그렸어요.' }
+];
+
+const statOf = {
+    range: v => (v.some(x => x === null) ? null : Math.max(...v) - Math.min(...v)),
+    max: v => (v.some(x => x === null) ? null : Math.max(...v)),
+    mean: v => (v.some(x => x === null) ? null : v.reduce((a, b) => a + b, 0) / v.length),
+    first: v => v[0],
+    last: v => v[4],
+    change: v => (v[0] === null || v[4] === null ? null : v[4] - v[0]),
+    rate: v => (v[0] === null || v[4] === null || v[0] === 0 ? null : (v[4] - v[0]) / v[0] * 100),
+    ratio: (a, b) => (a === null || b === null || b === 0 ? null : a / b)
+};
+
+const METRICS = [
+    { id: 'range', group: 'pair', name: '최대 변화량', desc: '각 집단에서 가장 큰 값 − 가장 작은 값 (값이 얼마나 크게 움직였나)',
+        prompt: '대조군과 실험군의 최대 변화량(최댓값-최솟값)을 각각 계산해 줘.', compute: (c, e) => ({ c: [statOf.range(c)], e: [statOf.range(e)] }) },
+    { id: 'final', group: 'pair', name: '마지막 시점의 값', desc: '마지막으로 측정한 시점의 값 (실험이 끝났을 때의 결과)',
+        prompt: '최종 시점(마지막 측정)에서 두 집단 간 수치 차이를 비교해 줘.', compute: (c, e) => ({ c: [statOf.last(c)], e: [statOf.last(e)] }) },
+    { id: 'mean', group: 'pair', name: '평균', desc: '다섯 번 측정한 값을 모두 더해 5로 나눈 값 (전체적인 수준)', decimalsPlus: 1,
+        prompt: '대조군과 실험군의 평균을 각각 구해 줘.', compute: (c, e) => ({ c: [statOf.mean(c)], e: [statOf.mean(e)] }) },
+    { id: 'max', group: 'pair', name: '최댓값', desc: '측정한 값 중 가장 큰 값 (가장 높이 올라간 정도)',
+        prompt: '두 집단의 최댓값을 각각 알려 줘.', compute: (c, e) => ({ c: [statOf.max(c)], e: [statOf.max(e)] }) },
+    { id: 'change', group: 'pair', name: '처음 대비 변화량', desc: '마지막 값 − 처음 값 (처음보다 얼마나 늘거나 줄었나)',
+        prompt: '처음 대비 변화량(마지막 값 − 처음 값)을 각각 구해 줘.', compute: (c, e) => ({ c: [statOf.change(c)], e: [statOf.change(e)] }) },
+    { id: 'rate', group: 'pair', name: '처음 대비 변화율(%)', desc: '(마지막 값 − 처음 값) ÷ 처음 값 × 100 (처음 값이 달라도 공정하게 비교)', unit: '%', decimals: 1, exclude: ['vaccine'],
+        prompt: '처음 측정값 대비 마지막 측정값의 변화율(%)을 구해 줘.', compute: (c, e) => ({ c: [statOf.rate(c)], e: [statOf.rate(e)] }) },
+    { id: 'peakTime', group: 'pair', name: '가장 높았던 시점', desc: '값이 가장 높았던 측정 시점 (언제 최고점에 도달했나)', themes: ['cola', 'vaccine'], unit: 'time', decimals: 0,
+        prompt: '값이 가장 높았던 시점을 집단별로 알려 줘.',
+        compute: (c, e, th) => {
+            const t = th.measure.labels.map(l => parseInt(l, 10) || 0);
+            const peak = v => (v.some(x => x === null) ? null : t[v.indexOf(Math.max(...v))]);
+            return { c: [peak(c)], e: [peak(e)] };
+        } },
+    { id: 'survival', group: 'pair', name: '생존율(%)', desc: '5세대 개체 수 ÷ 1세대 개체 수 × 100 (처음 무리 중 얼마나 남았나)', themes: ['selection'], unit: '%', decimals: 1,
+        prompt: '각 집단의 생존율(5세대 ÷ 1세대 × 100)을 구해 줘.',
+        compute: (c, e) => ({ c: [statOf.ratio(c[4], c[0]) === null ? null : statOf.ratio(c[4], c[0]) * 100], e: [statOf.ratio(e[4], e[0]) === null ? null : statOf.ratio(e[4], e[0]) * 100] }) },
+    { id: 'fold', group: 'pair', name: '증식 배수', desc: '마지막 콜로니 수 ÷ 처음 콜로니 수 (몇 배로 늘었나)', themes: ['penicillin'], unit: '배', decimals: 1,
+        prompt: '각 집단의 증식 배수(마지막 ÷ 처음)를 구해 줘.', compute: (c, e) => ({ c: [statOf.ratio(c[4], c[0])], e: [statOf.ratio(e[4], e[0])] }) },
+    { id: 'diffSeries', group: 'series', name: '시점별 두 집단의 차이', desc: '측정 시점마다 (실험군 − 대조군) — 차이가 언제 커지고 작아지나', rows: ['d'], cols: 5,
+        prompt: '각 측정 시점마다 두 집단의 차이(실험군 − 대조군)를 구해 줘.',
+        compute: (c, e) => ({ d: c.map((x, i) => (x === null || e[i] === null ? null : e[i] - x)) }) },
+    { id: 'rateSeries', group: 'series', name: '시점별 처음 대비 변화율(%)', desc: '각 시점의 (값 − 처음 값) ÷ 처음 값 × 100 — 처음 값을 0%로 맞춰 변화 추이를 비교', cols: 5, unit: '%', decimals: 1, exclude: ['vaccine'],
+        prompt: '각 측정 시점의 처음 대비 변화율(%)을 집단별로 구해 줘.',
+        compute: (c, e) => {
+            const r = v => v.map(x => (x === null || v[0] === null || v[0] === 0 ? null : (x - v[0]) / v[0] * 100));
+            return { c: r(c), e: r(e) };
+        } },
+    { id: 'share', group: 'ratio', name: '마지막 세대 생존 개체의 구성 비율(%)', desc: '마지막 세대에 살아남은 쥐 전체 중 각 집단이 차지하는 비율', themes: ['selection'], unit: '%', decimals: 1,
+        prompt: '마지막 세대에서 살아남은 개체 중 각 집단이 차지하는 비율(%)을 구해 줘.',
+        compute: (c, e) => {
+            const total = c[4] === null || e[4] === null ? null : c[4] + e[4];
+            return total ? { c: [c[4] / total * 100], e: [e[4] / total * 100] } : { c: [null], e: [null] };
+        } },
+    { id: 'inhibition', group: 'ratio', name: '세균 억제율(%)', desc: '(대조군 최종 − 실험군 최종) ÷ 대조군 최종 × 100 — 실험군에서 세균이 얼마나 덜 자랐나', themes: ['penicillin'], rows: ['s'], unit: '%', decimals: 1,
+        prompt: '세균 억제율((대조군 최종 − 실험군 최종) ÷ 대조군 최종 × 100)을 구해 줘.',
+        compute: (c, e) => ({ s: [c[4] === null || e[4] === null || c[4] === 0 ? null : (c[4] - e[4]) / c[4] * 100] }) }
+];
+
+function metricsForTheme(themeId) {
+    return METRICS.filter(m => (!m.themes || m.themes.includes(themeId)) && !(m.exclude || []).includes(themeId));
+}
+
+function metricById(id) {
+    return METRICS.find(m => m.id === id) || null;
+}
+
+function metricRows(m) {
+    return m.rows || ['c', 'e'];
+}
+
+function metricCols(m) {
+    return m.cols || 1;
+}
+
+function metricUnit(m, theme) {
+    if (m.unit === 'time') return theme.measure.labels[4].replace(/[0-9.\s]/g, '');
+    return m.unit || theme.measure.unit;
+}
+
+function metricDecimals(m, theme) {
+    if (typeof m.decimals === 'number') return m.decimals;
+    return theme.measure.decimals + (m.decimalsPlus || 0);
+}
+
+function metricRowLabel(m, theme, state, row) {
+    if (row === 'c') return groupLabel(theme, state, 'ctrl');
+    if (row === 'e') return groupLabel(theme, state, 'exp');
+    if (row === 'd') return '차이 (실험군 − 대조군)';
+    return m.name;
+}
+
+function metricColLabels(m, theme) {
+    return metricCols(m) === 5 ? theme.measure.labels : [m.name];
+}
+
+function summaryKey(metricId, row, col) {
+    return `sum.${metricId}.${row}.${col}`;
+}
+
+// 학생이 입력한 가공 데이터 값 { c: [..], e: [..] } 등
+function summaryValues(m, state) {
+    const out = {};
+    metricRows(m).forEach(r => {
+        out[r] = Array.from({ length: metricCols(m) }, (_, i) => toNum(state[summaryKey(m.id, r, i)]));
+    });
+    return out;
+}
+
+// 입력값 확인: 기록표 값으로 계산한 값과 비교 (반올림 차이는 허용)
+function summaryCheck(theme, state) {
+    const m = metricById(state['sum.metric']);
+    if (!m) return null;
+    const expected = m.compute(readSeries(state, 'c'), readSeries(state, 'e'), theme);
+    const entered = summaryValues(m, state);
+    const d = metricDecimals(m, theme);
+    const status = {};
+    let wrong = 0, unknown = 0, empty = 0;
+    metricRows(m).forEach(r => entered[r].forEach((v, i) => {
+        const key = summaryKey(m.id, r, i);
+        const exp = expected[r] ? expected[r][i] : null;
+        if (v === null) { status[key] = 'empty'; empty++; return; }
+        if (exp === null || exp === undefined) { status[key] = 'unknown'; unknown++; return; }
+        const tol = Math.max(0.51 * Math.pow(10, -d), Math.abs(exp) * 0.01);
+        if (Math.abs(v - exp) <= tol) status[key] = 'ok';
+        else { status[key] = 'wrong'; wrong++; }
+    }));
+    return { metric: m, expected, entered, status, wrong, unknown, empty };
+}
+
+function buildSummaryChart(theme, state, common) {
+    const m = metricById(state['sum.metric']);
+    if (!m) return { type: 'bar', data: { labels: [], datasets: [] }, options: common };
+    const group = METRIC_GROUPS.find(g => g.id === m.group);
+    const v = summaryValues(m, state);
+    const unit = metricUnit(m, theme);
+    const yTitle = `${m.name}${unit && !m.name.includes(`(${unit})`) ? ` (${unit})` : ''}`;
+    const cl = groupLabel(theme, state, 'ctrl'), el = groupLabel(theme, state, 'exp');
+    if (group.chart === 'bar') {
+        return {
+            type: 'bar',
+            data: { labels: [cl, el], datasets: [{ label: yTitle, data: [v.c[0], v.e[0]], backgroundColor: [COLOR_CTRL, COLOR_EXP] }] },
+            options: { ...common, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: yTitle } } } }
+        };
+    }
+    if (group.chart === 'line') {
+        const datasets = m.id === 'diffSeries'
+            ? [{ label: '차이 (실험군 − 대조군)', data: v.d, borderColor: '#8e44ad', backgroundColor: '#8e44ad', borderWidth: 2, tension: 0.3, spanGaps: true }]
+            : [{ label: cl, data: v.c, borderColor: COLOR_CTRL, backgroundColor: COLOR_CTRL, borderWidth: 2, tension: 0.3, spanGaps: true },
+               { label: el, data: v.e, borderColor: COLOR_EXP, backgroundColor: COLOR_EXP, borderWidth: 2, tension: 0.3, spanGaps: true }];
+        return {
+            type: 'line',
+            data: { labels: theme.measure.labels, datasets },
+            options: { ...common, scales: { x: { title: { display: true, text: theme.measure.axis } }, y: { title: { display: true, text: yTitle } } } }
+        };
+    }
+    // 원그래프
+    const pie = m.id === 'inhibition'
+        ? { labels: ['줄어든 비율 (억제)', '남은 비율'], data: [v.s[0], v.s[0] === null ? null : 100 - v.s[0]], colors: ['#27ae60', '#d5dbdb'] }
+        : { labels: [cl, el], data: [v.c[0], v.e[0]], colors: [COLOR_CTRL, COLOR_EXP] };
+    return {
+        type: 'pie',
+        data: { labels: pie.labels, datasets: [{ data: pie.data, backgroundColor: pie.colors }] },
+        options: { ...common, plugins: { ...common.plugins, title: { display: true, text: yTitle } } }
+    };
+}
+
+// 2차 그래프 아래 안내: 왜 이 그래프로 그렸는지
+function summaryChartWhy(state) {
+    const m = metricById(state['sum.metric']);
+    if (!m) return '';
+    const group = METRIC_GROUPS.find(g => g.id === m.group);
+    const v = summaryValues(m, state);
+    const negative = group.chart === 'pie' && Object.values(v).some(arr => arr.some(x => x !== null && (x < 0 || x > 100)));
+    const notHundred = m.id === 'share' && v.c[0] !== null && v.e[0] !== null && Math.abs(v.c[0] + v.e[0] - 100) > 1;
+    return `📊 ${group.why}${negative ? ' (원그래프는 0~100% 범위 밖의 값을 나타낼 수 없어요. 값을 다시 확인해 보세요.)' : ''}`
+        + (notHundred ? ' (구성 비율은 두 값을 더하면 100%가 되어야 해요.)' : '');
+}
+
+// 가설 검증·신문·교사 화면에 쓰는 한 줄 요약
+function summaryText(theme, state) {
+    const m = metricById(state['sum.metric']);
+    if (!m) return '';
+    const v = summaryValues(m, state);
+    const unit = metricUnit(m, theme);
+    const f = x => (x === null ? '?' : `${x}${unit === '%' ? '%' : ` ${unit}`}`);
+    if (metricCols(m) === 5) {
+        return `${m.name} — ` + metricRows(m).map(r =>
+            `${metricRowLabel(m, theme, state, r)}: ${theme.measure.labels.map((l, i) => `${l} ${v[r][i] === null ? '?' : v[r][i]}`).join(', ')}`).join(' / ');
+    }
+    return `${m.name} — ` + metricRows(m).map(r => (r === 's' ? f(v[r][0]) : `${metricRowLabel(m, theme, state, r)}: ${f(v[r][0])}`)).join(' / ');
 }
