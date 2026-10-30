@@ -8,6 +8,7 @@ let myInfo = null;            // { id, code, name }
 let teams = [];
 let allMessages = [];
 let onlineByTeam = {};
+let membersByTeam = {};
 let detailId = null;
 let detailSig = '';
 let dashChannel = null;
@@ -159,11 +160,15 @@ function joinPresence() {
         .on('presence', { event: 'sync' }, () => {
             const st = presenceChannel.presenceState();
             onlineByTeam = {};
+            membersByTeam = {};
             Object.values(st).forEach(list => {
                 const p = list.find(x => x.role === 'student' && x.team_id);
-                if (p) onlineByTeam[p.team_id] = (onlineByTeam[p.team_id] || 0) + 1;
+                if (!p) return;
+                onlineByTeam[p.team_id] = (onlineByTeam[p.team_id] || 0) + 1;
+                (membersByTeam[p.team_id] = membersByTeam[p.team_id] || []).push(p);
             });
             scheduleRender();
+            if (detailId) renderDetailMembers();
         })
         .subscribe();
 }
@@ -267,7 +272,77 @@ function openDetail(id) {
     $('teacher-comment').value = '';
     renderDetail(true);
     renderDetailFeedback();
+    renderDetailMembers();
     $('detail-report').scrollTop = 0;
+}
+
+function renderDetailMembers() {
+    const list = membersByTeam[detailId] || [];
+    $('detail-members').innerHTML = `<h3>👥 접속 중인 모둠원 (${list.length}명)</h3>`
+        + (list.length
+            ? `<div class="member-chips">${list.map(p => `<span class="member-chip"><b>${escapeHtml(p.name || '?')}</b> ${escapeHtml(roleName(p.job))}</span>`).join('')}</div>`
+            : '<p class="hint">지금 접속한 모둠원이 없어요.</p>');
+}
+
+function renderThemeSelect(t) {
+    const sel = $('detail-theme');
+    sel.innerHTML = '<option value="">테마: 학생이 선택</option>'
+        + THEME_ORDER.map(id => `<option value="${id}">테마: ${THEMES[id].icon} ${THEMES[id].title}</option>`).join('');
+    sel.value = t.theme_id || '';
+}
+
+// 교사가 모둠의 테마를 정해 준다 (이미 진행한 내용이 있으면 확인 후 초기화)
+async function assignTheme(themeId) {
+    const t = teams.find(x => x.id === detailId);
+    if (!t || (t.theme_id || '') === themeId) return;
+    const hasProgress = t.theme_id && Object.keys(t.state || {}).some(k => !k.startsWith('sim.') && k !== 'theme.assigned');
+    if (hasProgress && !confirm(`${teamLabel(t)}이(가) 이미 진행한 내용이 지워지고 새 테마로 시작합니다. 바꿀까요?`)) {
+        renderThemeSelect(t);
+        return;
+    }
+    const patch = themeId
+        ? { theme_id: themeId, stage: 1, state: { ...defaultThemeState(themeId), 'theme.assigned': true } }
+        : { theme_id: null, stage: 0, state: {} };
+    const { error } = await sb.from('teams').update(patch).eq('id', t.id);
+    if (error) {
+        console.error(error);
+        toast('테마를 지정하지 못했어요. 다시 시도해 주세요.', 'error');
+        renderThemeSelect(t);
+        return;
+    }
+    Object.assign(t, patch);
+    renderDetail(true);
+    scheduleRender();
+    toast(themeId ? `${teamLabel(t)}에 '${THEMES[themeId].title}' 테마를 지정했어요.` : `${teamLabel(t)}은(는) 학생이 테마를 고르게 했어요.`, 'success');
+}
+
+async function autoAssignThemes() {
+    const targets = filteredTeams().filter(t => !t.theme_id);
+    if (!targets.length) {
+        toast('테마가 없는 모둠이 없어요. (위쪽 필터의 반을 확인하세요)');
+        return;
+    }
+    const plan = targets.map((t, i) => ({ t, themeId: THEME_ORDER[(t.team_no - 1) % THEME_ORDER.length] }));
+    if (!confirm(`${plan.map(p => `${teamLabel(p.t)} → ${THEMES[p.themeId].title}`).join('\n')}\n\n이대로 배정할까요?`)) return;
+    for (const p of plan) {
+        const patch = { theme_id: p.themeId, stage: 1, state: { ...defaultThemeState(p.themeId), 'theme.assigned': true } };
+        const { error } = await sb.from('teams').update(patch).eq('id', p.t.id);
+        if (error) {
+            console.error(error);
+            toast('일부 모둠의 테마를 지정하지 못했어요. 다시 시도해 주세요.', 'error');
+            return;
+        }
+        Object.assign(p.t, patch);
+    }
+    scheduleRender();
+    toast(`모둠 ${plan.length}개에 테마를 배정했어요.`, 'success');
+}
+
+// 교사 보기 모드로 학생 화면 열기 (모든 단계를 자유롭게 넘겨 볼 수 있음 · 평가용)
+function openStudentView() {
+    const t = teams.find(x => x.id === detailId);
+    if (!t || !myInfo) return;
+    window.open(`${studentLink()}&team=${t.id}&teacher=1`, '_blank');
 }
 
 function closeDetail() {
@@ -300,6 +375,7 @@ function renderDetail(force = false) {
 
     const th = t.theme_id ? THEMES[t.theme_id] : null;
     $('detail-team').textContent = teamLabel(t);
+    renderThemeSelect(t);
     $('detail-sub').textContent = th ? `${th.icon} ${th.title} · ${STAGES[Math.max(1, t.stage) - 1].name} 단계` : '테마 선택 전';
 
     const report = $('detail-report');
@@ -336,12 +412,15 @@ function buildReport(t, aiMsgs) {
     const designRows = th.vars.map((v, i) => {
         const manip = c.manipulated.includes(i);
         return `<tr class="${manip ? 'manip' : ''}"><td>${escapeHtml(v.name)}</td><td>${manip ? '조작' : '통제'}</td>
-            <td>${escapeHtml(v.options[c.ctrl[i]])}</td><td>${manip ? escapeHtml(v.options[c.exp[i]]) : '<span class="muted">(같음)</span>'}</td></tr>`;
+            <td>${c.ctrl[i] >= 0 ? escapeHtml(v.options[c.ctrl[i]]) : '<span class="muted">미정</span>'}</td><td>${manip ? (c.exp[i] >= 0 ? escapeHtml(v.options[c.exp[i]]) : '<span class="muted">미정</span>') : '<span class="muted">(같음)</span>'}</td></tr>`;
     }).join('');
     const checkHtml = [...check.errors.map(e => `<div class="rp-alert error">❗ ${escapeHtml(e)}</div>`),
         ...check.warnings.map(w => `<div class="rp-alert warn">⚠️ ${escapeHtml(w)}</div>`)].join('');
     const submitted = !!s['design.submittedAt'];
     const hypo = submitted ? s.hypothesis : composeHypothesis(s);
+    const pred = submitted ? (s.prediction || composePrediction(s)) : composePrediction(s);
+    const cl = groupLabel(th, s, 'ctrl'), el = groupLabel(th, s, 'exp');
+    const by = key => (s[`${key}.submittedBy`] ? `<span class="rp-by">제출: ${escapeHtml(s[`${key}.submittedBy`])}</span>` : '');
 
     // 기록표 (학생 기록값 vs 실제 측정값)
     const truth = simulate(t.id, t.theme_id, s);
@@ -376,23 +455,24 @@ function buildReport(t, aiMsgs) {
 
     return `
     <div class="report-grid">
-        ${sec('1. 문제 인식', `<p>${text(s.problem)}</p>`)}
+        ${sec('1. 문제 인식', `<p>${text(s.problem)}</p>${by('story')}`)}
         ${sec('2. 탐구 설계', `
             <table class="rp-table"><thead><tr><th>변인</th><th>방법</th><th>대조군</th><th>실험군</th></tr></thead><tbody>${designRows}</tbody></table>
             ${checkHtml}
-            <div class="rp-hypo"><span class="rp-tag ${submitted ? 'ok' : ''}">${submitted ? '전송됨' : '작성 중'}</span> ${escapeHtml(hypo)}</div>`)}
+            <div class="rp-hypo"><span class="rp-tag ${submitted ? 'ok' : ''}">${submitted ? '전송됨' : '작성 중'}</span> <b>가설</b> ${escapeHtml(hypo)}</div>
+            <div class="rp-hypo pred"><b>예측</b> ${escapeHtml(pred)}</div>${by('design')}`)}
         ${sec(`3. 측정 기록 <small>(${escapeHtml(m.name)}, ${escapeHtml(m.unit)})</small>`, `
             <div class="table-scroll"><table class="rp-table data"><thead><tr><th>구분</th>${m.labels.map(l => `<th>${l}</th>`).join('')}</tr></thead>
-            <tbody>${dataRow('c', '대조군', 'row-ctrl')}${dataRow('e', '실험군', 'row-exp')}</tbody></table></div>
-            <p class="hint">빨간 칸: 학생이 기록한 값이 기기 측정값과 다름</p>`, 'wide')}
+            <tbody>${dataRow('c', escapeHtml(cl), 'row-ctrl')}${dataRow('e', escapeHtml(el), 'row-exp')}</tbody></table></div>
+            <p class="hint">빨간 칸: 학생이 기록한 값이 기기 측정값과 다름</p>${by('experiment')}`, 'wide')}
         ${sec('📈 1차 그래프 (과정의 추이)', chartBlock(1))}
         ${sec('📊 2차 그래프 (결과의 요약)', `
             <table class="rp-table"><thead><tr><th>구분</th><th>${text(s['summary.label'])}</th></tr></thead>
-            <tbody><tr><td class="row-ctrl">대조군</td><td>${text(s['summary.c'])}</td></tr><tr><td class="row-exp">실험군</td><td>${text(s['summary.e'])}</td></tr></tbody></table>
+            <tbody><tr><td class="row-ctrl">${escapeHtml(cl)}</td><td>${text(s['summary.c'])}</td></tr><tr><td class="row-exp">${escapeHtml(el)}</td><td>${text(s['summary.e'])}</td></tr></tbody></table>
             ${chartBlock(2)}`)}
         ${sec('🤖 AI 데이터 분석', aiLog)}
-        ${sec('✅ 가설 검증 · 결론', `<div class="center">${val}</div><p class="rp-conclusion">${text(s.conclusion)}</p>`)}
-        ${sec('🤔 비판적 고찰', `<p>${text(s.reflection)}</p>`, 'wide')}
+        ${sec('✅ 가설 검증 · 결론', `<div class="center">${val}</div><div class="rp-validation">${validationDetailHtml(s)}</div>${by('final')}`)}
+        ${sec('🤔 비판적 고찰', `<p>${text(s.reflection)}</p>${by('newspaper')}`, 'wide')}
     </div>`;
 }
 

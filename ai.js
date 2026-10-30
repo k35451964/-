@@ -54,8 +54,8 @@ function ruleBasedAnswer(question, ctx) {
     }
 
     const groups = [
-        { name: '대조군', values: ctx.ctrl },
-        { name: '실험군', values: ctx.exp }
+        { name: ctx.ctrlLabel || '대조군', values: ctx.ctrl },
+        { name: ctx.expLabel || '실험군', values: ctx.exp }
     ];
     const filled = groups.map(g => g.values.filter(v => v !== null));
     if (filled[0].length === 0 && filled[1].length === 0) {
@@ -104,7 +104,7 @@ function ruleBasedAnswer(question, ctx) {
     const compare = (a, b, what) => {
         const diff = a - b;
         if (Math.abs(diff) < Math.pow(10, -d) / 2) return `➡ 두 집단의 ${what}이(가) 같아요.`;
-        return `➡ ${diff > 0 ? '대조군' : '실험군'}의 ${what}이(가) ${f(Math.abs(diff))} ${u} 더 커요.`;
+        return `➡ ${diff > 0 ? groups[0].name : groups[1].name}의 ${what}이(가) ${f(Math.abs(diff))} ${u} 더 커요.`;
     };
 
     for (const intent of intents) {
@@ -122,9 +122,9 @@ function ruleBasedAnswer(question, ctx) {
             if (c === null || e === null) {
                 lines.push(`• 마지막 측정(${label(4)}) 칸이 비어 있어요. 측정 후 기록해 주세요.`);
             } else {
-                lines.push(`• ${label(4)} 대조군: ${f(c)} ${u}`);
-                lines.push(`• ${label(4)} 실험군: ${f(e)} ${u}`);
-                lines.push(`• 차이(대조군 − 실험군): ${f(c - e)} ${u}`);
+                lines.push(`• ${label(4)} ${groups[0].name}: ${f(c)} ${u}`);
+                lines.push(`• ${label(4)} ${groups[1].name}: ${f(e)} ${u}`);
+                lines.push(`• 차이(${groups[0].name} − ${groups[1].name}): ${f(c - e)} ${u}`);
             }
         }
         if (intent === 'mean') {

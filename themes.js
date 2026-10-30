@@ -35,7 +35,6 @@ const THEMES = {
             { name: '섭취량', options: ['250mL', '500mL'] },
             { name: '섭취 후 활동', options: ['휴식', '가벼운 산책'] }
         ],
-        hypoExamples: { control: '예: 공복, 250mL, 휴식', mctrl: '예: 일반 콜라', mexp: '예: 제로 콜라', predict: '예: 혈당이 더 적게 오를' },
         measure: { name: '혈당', unit: 'mg/dL', decimals: 0, axis: '섭취 후 시간', labels: ['0분', '30분', '60분', '90분', '120분'] },
         device: 'glucose',
         deviceText: { btn: '🩸 채혈 후 시험지 넣기', nextBtn: '🩸 다음 시간 채혈하기', anim1: '혈액 주입 중... 🩸', anim2: '혈당 분석 중... 🧪' },
@@ -70,7 +69,6 @@ const THEMES = {
             { name: '조각의 크기', options: ['큰 덩어리 1개 (총 10g)', '잘게 썬 조각 여러 개 (총 10g)'] },
             { name: '용액의 온도', options: ['25℃ (상온)', '5℃ (냉장)'] }
         ],
-        hypoExamples: { control: '예: 감자, 큰 덩어리, 25℃', mctrl: '예: 0% 증류수', mexp: '예: 3% 소금물', predict: '예: 조각의 질량이 줄어들' },
         measure: { name: '조각의 질량', unit: 'g', decimals: 2, axis: '담근 시간', labels: ['0분', '10분', '20분', '30분', '40분'] },
         device: 'scale',
         deviceText: { btn: '⚖️ 조각 꺼내 질량 재기', nextBtn: '⚖️ 다음 시간 질량 재기', anim1: '물기 닦고 올리는 중... 🧻', anim2: '질량 안정화 중... ⚖️' },
@@ -104,7 +102,6 @@ const THEMES = {
             { name: '매(포식자)의 수', options: ['2마리', '6마리'] },
             { name: '숨을 곳(덤불)', options: ['없음', '있음'] }
         ],
-        hypoExamples: { control: '예: 어두운 화산재, 매 6마리, 덤불 없음', mctrl: '예: 검은 쥐', mexp: '예: 흰 쥐', predict: '예: 세대가 지날수록 개체 수가 크게 줄어들' },
         measure: { name: '살아남은 쥐의 수', unit: '마리', decimals: 0, axis: '세대', labels: ['1세대', '2세대', '3세대', '4세대', '5세대'] },
         device: 'drone',
         deviceText: { btn: '🛸 드론 스캔 시작', nextBtn: '🛸 다음 세대 스캔하기', anim1: '드론 이륙 중... 🛸', anim2: '개체 수 세는 중... 📸' },
@@ -143,7 +140,6 @@ const THEMES = {
             { name: '면역 저하 질환', options: ['없음', '있음'] },
             { name: '마지막 접종 후 지난 기간', options: ['1개월', '1년'] }
         ],
-        hypoExamples: { control: '예: 20대, 질환 없음, 1개월', mctrl: '예: 접종 안 함', mexp: '예: 2회 접종', predict: '예: 항체 농도가 더 빠르고 높게 올라갈' },
         measure: { name: '항체 농도', unit: 'AU/mL', decimals: 0, axis: '바이러스 침입 후 경과 일수', labels: ['침입 직후', '7일', '14일', '21일', '28일'] },
         device: 'analyzer',
         deviceText: { btn: '🧪 혈액 분석 시작', nextBtn: '🧪 다음 시점 혈액 분석', anim1: '원심분리 가동 중... 🌀', anim2: '항체 농도 분석 중... 🔬' },
@@ -186,7 +182,6 @@ const THEMES = {
             { name: '세균의 종류', options: ['포도상구균', '대장균'] },
             { name: '배지의 영양', options: ['풍부함', '부족함'] }
         ],
-        hypoExamples: { control: '예: 25℃, 포도상구균, 풍부한 배지', mctrl: '예: 곰팡이 없음', mexp: '예: 곰팡이 있음', predict: '예: 세균 군집 수가 늘지 않을' },
         measure: { name: '세균 군집(콜로니) 수', unit: '개', decimals: 0, axis: '배양 시간', labels: ['0시간', '12시간', '24시간', '36시간', '48시간'] },
         device: 'counter',
         deviceText: { btn: '🔬 콜로니 스캔하기', nextBtn: '🔬 다음 시간 스캔하기', anim1: '배양 접시 올리는 중... 🧫', anim2: '콜로니 세는 중... 🔍' },

@@ -11,6 +11,9 @@ let team = null;            // 현재 모둠 (teams 테이블의 한 줄)
 let state = {};             // 모둠이 함께 쓰는 입력 상태 (teams.state)
 let messages = [];          // AI 대화 + 선생님 피드백
 let viewStage = 0;          // 이 기기가 보고 있는 단계
+let me = { name: '', role: '' };     // 이 기기를 쓰는 학생의 이름·역할
+let teacherMode = false;    // 교사 보기 모드 (모든 단계 자유 이동, 역할 제한 없음)
+let onlineMembers = [];
 
 const pending = {};         // 아직 서버에 보내지 않은 변경
 const inflight = {};        // 서버로 보냈지만 아직 실시간 확인(echo)이 오지 않은 값 (내 입력이 옛 값으로 되돌려지지 않게)
@@ -26,6 +29,10 @@ let memIndex = null;
 let busyTicker = null;
 const busySeenAt = {};
 let lastDeviceHtml = '';
+let lastSceneHtml = '';
+// 측정 애니메이션 시간: 첫 측정은 실험 장면을 길게, 그다음부터는 짧게
+const MEASURE_TIME = { long: { phase1: 2200, total: 4300 }, short: { phase1: 1000, total: 2500 } };
+const busyTiming = b => (b && b.long ? MEASURE_TIME.long : MEASURE_TIME.short);
 let aiThinking = false;
 const newsImageCache = {};
 
@@ -56,10 +63,48 @@ function setIntroMsg(text, isError = false) {
 let currentTeacher = null;     // { id, name, code }
 
 function initIntro() {
+    fillRoleSelect($('member-role'));
+    $('member-name').value = storageGet('memberName') || '';
+    $('member-role').value = storageGet('memberRole') || '';
+    showRoleDuty();
+    $('member-role').onchange = showRoleDuty;
+    if (TEACHER_VIEW_REQUESTED && !teacherMode && !initIntro.triedTeacher) {
+        initIntro.triedTeacher = true;
+        tryTeacherView();
+        return;
+    }
     const fromUrl = new URLSearchParams(location.search).get('t');
     const code = (fromUrl || storageGet('lastCode') || '').trim().toUpperCase();
     if (code) loadTeacher(code);
     else showCodeBox();
+}
+
+function fillRoleSelect(select) {
+    select.innerHTML = '<option value="">-- 역할 선택 --</option>'
+        + ROLES.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+}
+
+function showRoleDuty() {
+    const r = ROLES.find(x => x.id === $('member-role').value);
+    $('role-duty').textContent = r ? `${r.name}: ${r.duty} 담당` : '';
+}
+
+// 교사가 대시보드에서 '학생 화면으로 보기'를 눌러 들어온 경우
+async function tryTeacherView() {
+    const params = new URLSearchParams(location.search);
+    setIntroMsg('교사 계정을 확인하는 중...');
+    const { data: ok } = await sb.rpc('is_teacher');
+    if (!ok) {
+        setIntroMsg('교사 로그인 정보가 없어서 학생 화면으로 들어갑니다.');
+        history.replaceState(null, '', `${location.pathname}${params.get('t') ? `?t=${params.get('t')}` : ''}`);
+        initIntro();
+        return;
+    }
+    teacherMode = true;
+    me = { name: '선생님', role: 'teacher' };
+    $('teacher-banner').hidden = false;
+    document.body.classList.add('teacher-mode');
+    await enterTeamById(params.get('team'));
 }
 
 function showCodeBox(message = '', isError = false) {
@@ -165,6 +210,20 @@ function onClassChange(preset) {
 async function enterTeam() {
     const id = $('team-select').value;
     if (!id) return;
+    const name = $('member-name').value.trim();
+    const role = $('member-role').value;
+    if (!name || !role) {
+        setIntroMsg('이름을 쓰고 역할을 골라 주세요.', true);
+        return;
+    }
+    me = { name, role };
+    storageSet('memberName', name);
+    storageSet('memberRole', role);
+    await enterTeamById(id);
+}
+
+async function enterTeamById(id) {
+    if (!id) { setIntroMsg('모둠 정보가 없어요.', true); return; }
     $('enter-btn').disabled = true;
     setIntroMsg('입장하는 중...');
     const { data, error } = await sb.from('teams').select('*').eq('id', id).single();
@@ -182,6 +241,7 @@ async function enterTeam() {
     $('topbar').hidden = false;
     $('feedback-fab').hidden = false;
     $('team-badge').textContent = teamLabel(team);
+    renderMeBadge();
     setSaveStatus('saved');
     subscribeTeam();
     joinPresence();
@@ -200,8 +260,18 @@ async function leaveTeam() {
     viewStage = 0;
     resetLocalSync();
     destroyAllCharts();
-    ['topbar', 'stepper', 'feedback-fab', 'feedback-panel'].forEach(id => { $(id).hidden = true; });
+    ['topbar', 'stepper', 'feedback-fab', 'feedback-panel', 'members-pop'].forEach(id => { $(id).hidden = true; });
     showScreen('intro-screen');
+    if (teacherMode) {
+        // 교사 보기 모드에서 나가면 창을 닫는다 (대시보드에서 연 새 창)
+        window.close();
+        teacherMode = false;
+        $('teacher-banner').hidden = true;
+        document.body.classList.remove('teacher-mode');
+        history.replaceState(null, '', location.pathname);
+        initIntro();
+        return;
+    }
     loadRoster();
 }
 
@@ -244,12 +314,87 @@ function joinPresence() {
         .on('presence', { event: 'sync' }, () => {
             if (!team) return;
             const st = presenceChannel.presenceState();
-            const n = Object.values(st).filter(list => list.some(p => p.team_id === team.id)).length;
-            $('online-badge').textContent = `👥 ${Math.max(1, n)}명 접속 중`;
+            onlineMembers = Object.values(st)
+                .map(list => list.find(p => p.team_id === team.id))
+                .filter(p => p && p.role === 'student');
+            $('online-badge').textContent = `👥 ${onlineMembers.length}명 접속 중`;
+            if (!$('members-pop').hidden) renderMembers();
         })
         .subscribe(async status => {
-            if (status === 'SUBSCRIBED' && team) await presenceChannel.track({ team_id: team.id, role: 'student' });
+            if (status === 'SUBSCRIBED' && team) await trackPresence();
         });
+}
+
+function trackPresence() {
+    if (!presenceChannel || !team) return;
+    return presenceChannel.track({
+        team_id: team.id,
+        role: teacherMode ? 'teacher' : 'student',
+        name: me.name,
+        job: me.role
+    });
+}
+
+// ---------- 모둠원 이름·역할 ----------
+function renderMeBadge() {
+    $('me-badge').textContent = teacherMode ? '👩‍🏫 선생님' : `🙋 ${me.name} · ${roleName(me.role)}`;
+    $('me-badge').disabled = teacherMode;
+}
+
+function toggleMembers() {
+    const pop = $('members-pop');
+    pop.hidden = !pop.hidden;
+    if (!pop.hidden) renderMembers();
+}
+
+function renderMembers() {
+    const byRole = ROLES.map(r => {
+        const people = onlineMembers.filter(m => m.job === r.id).map(m => escapeHtml(m.name));
+        return `<li class="${people.length ? '' : 'empty'}"><b>${r.name}</b><span>${people.length ? people.join(', ') : '비어 있음'}</span></li>`;
+    }).join('');
+    $('members-pop').innerHTML = `<div class="members-head">지금 접속한 모둠원 <button class="icon-btn" onclick="toggleMembers()" aria-label="닫기">✕</button></div>
+        <ul>${byRole}</ul><p class="hint">각 단계의 제출 버튼은 담당 역할과 연구 책임자만 누를 수 있어요.</p>`;
+}
+
+function openMemberModal() {
+    if (teacherMode) return;
+    fillRoleSelect($('member-role-edit'));
+    $('member-name-edit').value = me.name;
+    $('member-role-edit').value = me.role;
+    $('member-modal').hidden = false;
+}
+
+function closeMemberModal() {
+    $('member-modal').hidden = true;
+}
+
+function saveMember() {
+    const name = $('member-name-edit').value.trim();
+    const role = $('member-role-edit').value;
+    if (!name || !role) { alert('이름을 쓰고 역할을 골라 주세요.'); return; }
+    me = { name, role };
+    storageSet('memberName', name);
+    storageSet('memberRole', role);
+    renderMeBadge();
+    trackPresence();
+    closeMemberModal();
+    refreshAll();
+}
+
+// 이 단계의 제출 버튼을 누를 수 있는지 (담당 역할 + 연구 책임자, 교사 보기 모드는 항상 가능)
+function canSubmit(stageKey) {
+    return teacherMode || me.role === 'leader' || STAGE_SUBMITTERS[stageKey].includes(me.role);
+}
+
+function whoAmI() {
+    return teacherMode ? '선생님' : `${me.name}(${roleName(me.role)})`;
+}
+
+// 역할 제한이 있는 제출 버튼과 안내 문구를 함께 갱신
+function gateButton(btnId, noteId, stageKey, extraDisabled = false) {
+    const allowed = canSubmit(stageKey);
+    $(btnId).disabled = extraDisabled || !allowed;
+    $(noteId).textContent = allowed ? '' : `🔒 이 단계의 제출은 ${submitterNames(stageKey)}가 해요. (나: ${roleName(me.role)})`;
 }
 
 async function resync() {
@@ -320,7 +465,7 @@ function onTeamRow(row) {
     if (row.stage > team.stage) {
         const prev = Math.max(1, team.stage);
         team.stage = row.stage;
-        if (team.theme_id && viewStage === prev && viewStage < team.stage) {
+        if (!teacherMode && team.theme_id && viewStage === prev && viewStage < team.stage) {
             toast(`모둠원이 '${STAGES[team.stage - 1].name}' 단계로 이동했어요.`);
             goToStage(team.stage);
         } else {
@@ -450,7 +595,8 @@ function scheduleRefresh() {
 function refreshAll() {
     if (!team || !team.theme_id) return;
     renderStepper();
-    $('change-theme-btn').hidden = !!state['design.submittedAt'];
+    $('change-theme-btn').hidden = !!state['design.submittedAt'] || !!state['theme.assigned'];
+    gateButton('finish-story-btn', 'story-role-note', 'story');
     refreshDesign();
     refreshExperiment();
     refreshAnalysis();
@@ -466,7 +612,7 @@ function renderStepper() {
     nav.hidden = false;
     const reachedMax = Math.max(1, team.stage);
     nav.innerHTML = STAGES.map(s => {
-        const reached = s.no <= reachedMax;
+        const reached = teacherMode || s.no <= reachedMax;
         const cls = [s.no === viewStage ? 'current' : '', s.no < reachedMax ? 'done' : '', reached ? '' : 'locked'].join(' ');
         return `<button class="step ${cls}" ${reached ? `onclick="goToStage(${s.no})"` : 'disabled'}>
             <span class="step-no">${s.no < reachedMax ? '✓' : s.no}</span><span class="step-name">${s.name}</span></button>`;
@@ -475,7 +621,7 @@ function renderStepper() {
 
 function goToStage(n) {
     if (!team || !team.theme_id) return;
-    n = Math.max(1, Math.min(n, Math.max(1, team.stage)));
+    n = Math.max(1, Math.min(n, teacherMode ? 5 : Math.max(1, team.stage)));
     viewStage = n;
     showScreen(STAGES[n - 1].screen);
     refreshAll();
@@ -483,7 +629,8 @@ function goToStage(n) {
 }
 
 function advance(n) {
-    if (team.stage < n) {
+    // 교사 보기 모드에서는 화면만 넘기고 모둠의 진행 단계는 바꾸지 않는다
+    if (!teacherMode && team.stage < n) {
         team.stage = n;
         saveStage(n);
     }
@@ -493,7 +640,18 @@ function advance(n) {
 // ==========================================
 // 테마 선택
 // ==========================================
+function finishStory() {
+    if (!canSubmit('story')) return;
+    if (!(state.problem || '').trim() && !confirm('아직 탐구 문제를 쓰지 않았어요. 그래도 다음 단계로 넘어갈까요?')) return;
+    if (!state['story.submittedAt']) setState({ 'story.submittedAt': new Date().toISOString(), 'story.submittedBy': whoAmI() }, true);
+    advance(2);
+}
+
 function showThemeScreen() {
+    if (team.theme_id && state['theme.assigned'] && !teacherMode) {
+        alert('선생님이 정해 준 테마예요. 바꾸려면 선생님께 말씀드리세요.');
+        return;
+    }
     if (team.theme_id && state['design.submittedAt']) {
         alert('설계를 이미 전송해서 테마를 바꿀 수 없어요. 바꾸려면 선생님께 초기화를 요청하세요.');
         return;
@@ -550,7 +708,7 @@ function buildThemeUI() {
 
     const header = `<div class="var-header"><div>변인 (조건)</div><div>어떻게 할까요?</div><div>구체적인 설정</div></div>`;
     $('dynamic-var-table').innerHTML = header + th.vars.map((v, i) => {
-        const opts = v.options.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+        const opts = '<option value="">-- 선택 --</option>' + v.options.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
         return `
         <div class="var-row" data-row="${i}">
             <div class="var-name">${escapeHtml(v.name)}</div>
@@ -567,21 +725,17 @@ function buildThemeUI() {
         </div>`;
     }).join('');
 
-    $('hypo-control').placeholder = th.hypoExamples.control;
-    $('hypo-manipulated-ctrl').placeholder = th.hypoExamples.mctrl;
-    $('hypo-manipulated-exp').placeholder = th.hypoExamples.mexp;
-    $('hypo-predict').placeholder = th.hypoExamples.predict;
-
     const m = th.measure;
     $('table-title').textContent = `${m.name} 기록표 (단위: ${m.unit})`;
     $('data-head').innerHTML = '<th>구분</th>' + m.labels.map(l => `<th>${l}</th>`).join('');
     const cells = g => [0, 1, 2, 3, 4].map(i =>
         `<td><input type="number" step="any" inputmode="decimal" class="data-input" id="${g}-${i}" data-key="data.${g}.${i}" aria-label="${g === 'c' ? '대조군' : '실험군'} ${m.labels[i]}"></td>`).join('');
-    $('data-row-c').innerHTML = '<td class="row-ctrl">대조군</td>' + cells('c');
-    $('data-row-e').innerHTML = '<td class="row-exp">실험군</td>' + cells('e');
+    $('data-row-c').innerHTML = '<td class="row-ctrl" id="data-label-c">대조군</td>' + cells('c');
+    $('data-row-e').innerHTML = '<td class="row-exp" id="data-label-e">실험군</td>' + cells('e');
 
     memIndex = null;
     lastDeviceHtml = '';
+    lastSceneHtml = '';
     applyStateToDom();
 }
 
@@ -589,11 +743,16 @@ function buildThemeUI() {
 // 2. 탐구 설계
 // ==========================================
 function currentDesignSig() {
-    return designSignature(team.theme_id, state) + '|' + composeHypothesis(state);
+    return designSignature(team.theme_id, state) + '|' + composeHypothesis(state) + '|' + composePrediction(state);
 }
 
 function isDesignSubmitted() {
     return !!state['design.submittedAt'] && state['design.sig'] === currentDesignSig();
+}
+
+// 측정 가능 여부: 설계를 전송했거나, 교사 보기 모드에서 설계에 오류가 없을 때
+function canMeasure() {
+    return isDesignSubmitted() || (teacherMode && !checkDesign(theme(), state).errors.length);
 }
 
 function isDesignLocked() {
@@ -608,8 +767,13 @@ function refreshDesign() {
         if (!row) return;
         row.classList.toggle('manipulated', manipulated);
         $(`exp-var${i}-container`).hidden = !manipulated;
-        $(`ctrl-label-${i}`).textContent = manipulated ? '대조군(기준)' : '통제값(공통)';
+        const mode = state[`var.${i}.mode`];
+        $(`ctrl-label-${i}`).textContent = !mode ? '설정값' : manipulated ? '대조군(기준)' : '통제값(공통)';
+        row.classList.toggle('undecided', !mode);
     });
+    const dep = (state['hypo.dep'] || '').trim();
+    $('pred-dep').textContent = dep || '(종속 변인)';
+    $('pred-dep').classList.toggle('empty', !dep);
 
     const check = checkDesign(th, state);
     const box = $('design-check');
@@ -633,13 +797,14 @@ function refreshDesign() {
     const btn = $('submit-s1-btn');
     btn.classList.toggle('done', submitted);
     if (submitted) {
-        btn.textContent = '전송 완료 ✅';
+        btn.textContent = `전송 완료 ✅${state['design.submittedBy'] ? ` (${state['design.submittedBy']})` : ''}`;
         btn.disabled = true;
+        $('design-role-note').textContent = '';
     } else {
         btn.textContent = state['design.submittedAt'] ? '📝 수정한 설계 다시 전송하기' : '📝 설계 결과 전송하기';
-        btn.disabled = locked;
+        gateButton('submit-s1-btn', 'design-role-note', 'design', locked);
     }
-    $('next-step-btn').disabled = !submitted;
+    $('next-step-btn').disabled = !submitted && !teacherMode;
 }
 
 function submitDesign() {
@@ -649,15 +814,21 @@ function submitDesign() {
         alert(check.errors.join('\n'));
         return;
     }
-    const blanks = ['hypo.control', 'hypo.mctrl', 'hypo.mexp', 'hypo.predict'].filter(k => !(state[k] || '').trim());
-    if (blanks.length) {
+    if (!canSubmit('design')) return;
+    if (HYPO_KEYS.some(k => !(state[k] || '').trim())) {
         alert('가설 문장의 빈칸을 모두 채워 주세요!');
+        return;
+    }
+    if (PRED_KEYS.some(k => !(state[k] || '').trim())) {
+        alert('예측 문장의 빈칸을 모두 채워 주세요!');
         return;
     }
     if (check.warnings.length && !confirm(`${check.warnings.join('\n')}\n\n이대로 전송할까요?`)) return;
     setState({
         hypothesis: composeHypothesis(state),
+        prediction: composePrediction(state),
         'design.submittedAt': new Date().toISOString(),
+        'design.submittedBy': whoAmI(),
         'design.sig': currentDesignSig()
     }, true);
     toast('설계 결과를 선생님께 전송했어요! 다음 단계로 넘어갈 수 있어요.', 'success');
@@ -679,7 +850,13 @@ function resetDesign() {
 // ==========================================
 function refreshExperiment() {
     const th = theme();
-    $('sim-design-warning').hidden = isDesignSubmitted();
+    $('sim-design-warning').hidden = canMeasure();
+    const cl = groupLabel(th, state, 'ctrl'), el = groupLabel(th, state, 'exp');
+    $('target-label-ctrl').textContent = cl;
+    $('target-label-exp').textContent = el;
+    if ($('data-label-c')) $('data-label-c').textContent = cl;
+    if ($('data-label-e')) $('data-label-e').textContent = el;
+    gateButton('finish-experiment-btn', 'experiment-role-note', 'experiment');
     const row = (label, cls, items) => `
         <div class="cond-row ${cls}"><b>${label}</b><div class="cond-items">${items.map(it =>
             `<span class="cond ${it.manipulated ? 'manip' : ''}"><small>${escapeHtml(it.name)}</small>${escapeHtml(it.value)}</span>`).join('')}</div></div>`;
@@ -693,7 +870,7 @@ function activeBusy() {
     if (!b || !b.id) return null;
     if (!busySeenAt[b.id]) busySeenAt[b.id] = Date.now();
     const elapsed = Date.now() - busySeenAt[b.id];
-    if (elapsed > 6000) return null;      // 측정하던 기기가 꺼진 경우
+    if (elapsed > 8000) return null;      // 측정하던 기기가 꺼진 경우
     return { ...b, elapsed };
 }
 
@@ -715,7 +892,7 @@ function renderDevice() {
     const v = { cond: target === 'ctrl' ? conds.ctrl : conds.exp, raw: null, seed: `${team.id}|${target}|${step}` };
 
     if (busy && busy.target === target) {
-        const phase = busy.elapsed < 1000 ? 'busy1' : 'busy2';
+        const phase = busy.elapsed < busyTiming(busy).phase1 ? 'busy1' : 'busy2';
         Object.assign(v, {
             phase,
             timeText: `${labels[busy.step]} 시점`,
@@ -753,13 +930,30 @@ function renderDevice() {
         lastDeviceHtml = html;
     }
 
+    // 실험 장면: 측정 중에는 직전 측정 결과까지의 모습을 보여 준다 (값이 미리 드러나지 않게)
+    const measuringHere = busy && busy.target === target;
+    const labelIndex = measuringHere ? busy.step : v.phase === 'mem' ? memIndex : v.phase === 'idle' ? 0 : step - 1;
+    const shownIndex = measuringHere ? busy.step - 1 : v.phase === 'mem' ? memIndex : step - 1;
+    const sceneHtml = SCENES[th.device]({
+        phase: v.phase,
+        cond: v.cond.map(x => Math.max(0, x)),
+        label: labels[Math.max(0, Math.min(4, labelIndex))],
+        values: truth,
+        index: shownIndex,
+        long: !!(busy && busy.long)
+    });
+    if (sceneHtml !== lastSceneHtml) {
+        $('scene-area').innerHTML = sceneHtml;
+        lastSceneHtml = sceneHtml;
+    }
+
     const btn = $('measure-btn');
     const txt = th.deviceText;
     btn.classList.toggle('busy', !!busy);
     if (busy) {
         btn.disabled = true;
-        btn.textContent = busy.target === target ? (busy.elapsed < 1000 ? txt.anim1 : txt.anim2) : '⏳ 모둠원이 다른 집단을 측정 중...';
-    } else if (!isDesignSubmitted()) {
+        btn.textContent = busy.target === target ? (busy.elapsed < busyTiming(busy).phase1 ? txt.anim1 : txt.anim2) : '⏳ 모둠원이 다른 집단을 측정 중...';
+    } else if (!canMeasure()) {
         btn.disabled = true;
         btn.textContent = '🔒 설계를 전송해야 측정할 수 있어요';
     } else if (step >= 5) {
@@ -785,18 +979,19 @@ function renderDevice() {
 }
 
 function measureData() {
-    if (!isDesignSubmitted() || activeBusy()) return;
+    if (!canMeasure() || activeBusy()) return;
     const target = measureTarget;
     const step = state[`sim.${target}`] || 0;
     if (step >= 5) return;
     memIndex = null;
     const id = Math.random().toString(36).slice(2, 10);
     busySeenAt[id] = Date.now();
-    setState({ 'sim.busy': { id, target, step } }, true);
+    const long = step === 0;
+    setState({ 'sim.busy': { id, target, step, long } }, true);
     setTimeout(() => {
         if (!team) return;
         setState({ [`sim.${target}`]: step + 1, 'sim.busy': null }, true);
-    }, 2500);
+    }, busyTiming({ long }).total);
 }
 
 function showMemory() {
@@ -860,11 +1055,13 @@ function renderChart(kind) {
 }
 
 function finishExperiment() {
+    if (!canSubmit('experiment')) return;
     const missing = [];
     if ([...readSeries(state, 'c'), ...readSeries(state, 'e')].some(v => v === null)) missing.push('기록표 빈칸');
     if (!state['chart1.type']) missing.push('1차 그래프');
-    if (!state['reason1.1'] || !state['reason1.2']) missing.push('그래프 선택 이유');
+    if (!(state['reason1.text'] || '').trim()) missing.push('그래프 선택 이유');
     if (missing.length && !confirm(`아직 ${missing.join(', ')}이(가) 완성되지 않았어요.\n그래도 다음 단계로 넘어갈까요?`)) return;
+    if (!state['experiment.submittedAt']) setState({ 'experiment.submittedAt': new Date().toISOString(), 'experiment.submittedBy': whoAmI() }, true);
     advance(4);
 }
 
@@ -880,9 +1077,22 @@ function refreshAnalysis() {
         if (hasChart1) drawChartInto('ref', 1, 'refChart1');
         else destroyChart('ref');
     }
-    $('hypo-recall').textContent = state.hypothesis ? `우리 가설: ${state.hypothesis}` : '';
+    const th = theme();
+    const cl = groupLabel(th, state, 'ctrl'), el = groupLabel(th, state, 'exp');
+    $('summary-label-c').textContent = cl;
+    $('summary-label-e').textContent = el;
+    $('hypo-recall').textContent = state.hypothesis || composeHypothesis(state);
+    $('pred-recall').textContent = state.prediction || composePrediction(state);
+    const c = toNum(state['summary.c']), e = toNum(state['summary.e']);
+    $('result-recall').textContent = c === null || e === null
+        ? '(위의 요약표를 채우면 여기에 표시돼요. 1차 그래프는 위쪽 ‘다시 보기’에서 확인하세요.)'
+        : `${state['summary.label'] || '핵심 수치'} — ${cl}: ${c} / ${el}: ${e}`;
     $('btn-accept').classList.toggle('selected', state.validation === '수용');
     $('btn-reject').classList.toggle('selected', state.validation === '기각');
+    $('val-fields').hidden = !state.validation;
+    $('val-accept-fields').hidden = state.validation !== '수용';
+    $('val-reject-fields').hidden = state.validation !== '기각';
+    gateButton('finish-analysis-btn', 'analysis-role-note', 'analysis');
 }
 
 function selectValidation(result) {
@@ -890,14 +1100,21 @@ function selectValidation(result) {
 }
 
 function finishAnalysis() {
+    if (!canSubmit('analysis')) return;
+    const filled = k => !!(state[k] || '').trim();
     if (!state.validation) { alert('가설 수용 여부를 선택해 주세요!'); return; }
-    if (!(state.conclusion || '').trim()) { alert('최종 결론을 작성해 주세요!'); return; }
+    if (!filled('val.evidence')) { alert('판단 근거를 작성해 주세요!'); return; }
+    if (state.validation === '수용' && !filled('conclusion')) { alert('탐구 결론을 작성해 주세요!'); return; }
+    if (state.validation === '기각' && (!filled('val.revised') || !filled('val.newPrediction'))) {
+        alert('가설 수정 방안과 새로운 예측을 작성해 주세요!');
+        return;
+    }
     const missing = [];
     if (toNum(state['summary.c']) === null || toNum(state['summary.e']) === null) missing.push('요약표');
     if (!state['chart2.type']) missing.push('2차 그래프');
     if (!state['reason2.1'] || !state['reason2.2']) missing.push('2차 그래프 선택 이유');
     if (missing.length && !confirm(`아직 ${missing.join(', ')}이(가) 완성되지 않았어요.\n그래도 제출할까요?`)) return;
-    setState({ 'final.submittedAt': new Date().toISOString() }, true);
+    setState({ 'final.submittedAt': new Date().toISOString(), 'final.submittedBy': whoAmI() }, true);
     advance(5);
     $('tada-overlay').hidden = false;
 }
@@ -969,7 +1186,9 @@ function buildAIContext() {
         labels: th.measure.labels,
         ctrl: readSeries(state, 'c'),
         exp: readSeries(state, 'e'),
-        hypothesis: state.hypothesis || '',
+        hypothesis: `${state.hypothesis || composeHypothesis(state)} / 예측: ${state.prediction || composePrediction(state)}`,
+        ctrlLabel: groupLabel(th, state, 'ctrl'),
+        expLabel: groupLabel(th, state, 'exp'),
         teamId: team.id,
         ctrlConditions: conditionText(th, state, 'ctrl'),
         expConditions: conditionText(th, state, 'exp')
@@ -1049,6 +1268,7 @@ function newsChartImage(kind) {
 function refreshNewspaper() {
     $('news-title').textContent = `${teamLabel(team)} 과학 일보`;
     $('news-hypo-text').textContent = state.hypothesis || '(가설 없음)';
+    $('news-pred-text').textContent = state.prediction || '(예측 없음)';
     [1, 2].forEach(kind => {
         const img = $(`news-chart${kind}-img`);
         const url = newsChartImage(kind);
@@ -1060,13 +1280,15 @@ function refreshNewspaper() {
     const val = $('news-val-text');
     val.textContent = state.validation ? `[가설 ${state.validation}]` : '[미선택]';
     val.className = `news-val ${state.validation === '수용' ? 'accept' : state.validation === '기각' ? 'reject' : ''}`;
-    $('news-conclusion-text').textContent = state.conclusion || '';
+    $('news-val-detail').innerHTML = validationDetailHtml(state);
+    gateButton('final-submit-btn', 'newspaper-role-note', 'newspaper');
     const btn = $('final-submit-btn');
     btn.textContent = state['newspaper.submittedAt'] ? '✅ 제출 완료 (고친 뒤 다시 제출할 수 있어요)' : '🚀 최종 신문 발행 및 선생님께 제출';
 }
 
 function submitNewspaper() {
-    setState({ 'newspaper.submittedAt': new Date().toISOString() }, true);
+    if (!canSubmit('newspaper')) return;
+    setState({ 'newspaper.submittedAt': new Date().toISOString(), 'newspaper.submittedBy': whoAmI() }, true);
     toast(`🎉 ${teamLabel(team)}의 과학 신문을 선생님께 제출했어요!`, 'success');
 }
 

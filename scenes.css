@@ -1,0 +1,68 @@
+/* ==========================================
+   실험 장면 애니메이션
+   ========================================== */
+.measure-stage { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; align-items: center; }
+.scene-area { background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06); }
+.scene-svg { display: block; width: 100%; height: auto; }
+@media (max-width: 760px) { .measure-stage { grid-template-columns: 1fr; } }
+
+.scene-svg .anim-lancet, .scene-svg .anim-blood, .scene-svg .anim-strip, .scene-svg .leg-a, .scene-svg .leg-b,
+.scene-svg .anim-lift, .scene-svg .anim-tweezers, .scene-svg .mouse-run, .scene-svg .anim-drone-in, .scene-svg .anim-drone-hover,
+.scene-svg .prop, .scene-svg .virus, .scene-svg .antibody, .scene-svg .anim-syringe, .scene-svg .syringe-fill, .scene-svg .anim-tube,
+.scene-svg .anim-dish-out, .scene-svg .anim-door, .scene-svg .clock-hand, .scene-svg .scene-bubble { transform-box: fill-box; }
+
+/* 콜라: 채혈 */
+.anim-lancet { animation: lancet 0.9s ease-out forwards; }
+@keyframes lancet { from { transform: translateX(46px); } to { transform: translateX(0); } }
+.anim-blood { transform-origin: center; animation: drop 0.5s 0.8s ease-out both; }
+@keyframes drop { from { transform: scale(0); } to { transform: scale(1); } }
+.anim-strip { animation: strip 1.4s ease-in forwards; }
+@keyframes strip { 0% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(170px); opacity: 0.2; } }
+.walking .leg-a { transform-origin: top center; animation: swing 0.7s ease-in-out infinite alternate; }
+.walking .leg-b { transform-origin: top center; animation: swing 0.7s ease-in-out infinite alternate-reverse; }
+@keyframes swing { from { transform: rotate(14deg); } to { transform: rotate(-14deg); } }
+.scene-bubble { transform-origin: bottom left; animation: pop-in 0.3s ease-out both; }
+@keyframes pop-in { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* 삼투압: 조각 꺼내기 */
+.anim-tweezers { animation: tweezers 1.6s ease-in-out forwards; }
+@keyframes tweezers { 0% { transform: translateY(-50px); } 40% { transform: translateY(0); } 100% { transform: translateY(-70px); } }
+.anim-lift { animation: lift 2.2s ease-in-out forwards; }
+@keyframes lift { 0%, 35% { transform: translate(0, 0); } 70% { transform: translate(0, -70px); } 100% { transform: translate(98px, 2px); } }
+
+/* 자연선택: 매·쥐·드론 */
+.hawk { animation: hawk 7s linear infinite; }
+@keyframes hawk { from { transform: translate(-30px, var(--hy)); } 50% { transform: translate(160px, calc(var(--hy) + 12px)); } to { transform: translate(350px, var(--hy)); } }
+.mouse-run { animation: scurry 2.4s ease-in-out infinite alternate; }
+@keyframes scurry { from { transform: translateX(-4px); } to { transform: translateX(5px); } }
+.anim-drone-in { animation: drone-in 1.3s ease-out forwards; }
+@keyframes drone-in { from { transform: translate(-190px, -20px); } to { transform: translate(0, 0); } }
+.anim-drone-hover { animation: hover 1s ease-in-out infinite alternate; }
+@keyframes hover { from { transform: translateY(-2px); } to { transform: translateY(3px); } }
+.prop { transform-origin: center; animation: prop 0.12s linear infinite alternate; }
+@keyframes prop { from { transform: scaleX(1); } to { transform: scaleX(0.3); } }
+.scan-beam { animation: beam 0.8s ease-in-out infinite alternate; }
+@keyframes beam { from { opacity: 0.3; } to { opacity: 1; } }
+
+/* 백신: 바이러스·항체·채혈 */
+.virus { animation: bob 3s ease-in-out infinite alternate; }
+@keyframes bob { from { transform: translate(0, -4px); } to { transform: translate(-6px, 4px); } }
+.antibody { transform-origin: center; animation: pop-in 0.5s ease-out both; }
+.anim-syringe { animation: syringe 1s ease-out forwards; }
+@keyframes syringe { from { transform: translateX(40px); } to { transform: translateX(0); } }
+.syringe-fill { transform-origin: left center; animation: fill 1.2s 1s ease-in both; }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.anim-tube { animation: tube 1.6s ease-in forwards; }
+@keyframes tube { 0% { transform: translate(-120px, 0); } 60% { transform: translate(0, 0); } 100% { transform: translate(80px, 0); opacity: 0.2; } }
+
+/* 페니실린: 배양기 */
+.anim-door { transform-origin: left center; animation: door 1s ease-in-out forwards; }
+@keyframes door { from { transform: scaleX(1); } to { transform: scaleX(0.08); } }
+.anim-dish-out { animation: dish-out 2.2s 0.8s ease-in-out both; }
+@keyframes dish-out { from { transform: translate(0, 0); } to { transform: translate(0, 60px); } }
+.clock-hand { transform-origin: bottom center; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .scene-svg * { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; }
+}

@@ -189,7 +189,7 @@ begin
 end;
 $$;
 
--- 테마 고르기 (설계를 전송한 뒤에는 바꿀 수 없음 → 교사가 초기화해야 함)
+-- 테마 고르기 (설계를 전송했거나 교사가 테마를 지정했으면 바꿀 수 없음)
 create or replace function public.set_team_theme(p_team_id uuid, p_theme_id text, p_state jsonb)
 returns boolean
 language plpgsql security definer set search_path = public
@@ -204,7 +204,8 @@ begin
     update public.teams
        set theme_id = p_theme_id, state = p_state, stage = 1
      where id = p_team_id
-       and coalesce(state ->> 'design.submittedAt', '') = '';
+       and coalesce(state ->> 'design.submittedAt', '') = ''
+       and coalesce(state ->> 'theme.assigned', '') = '';    -- 교사가 지정한 테마는 학생이 바꿀 수 없음
     return found;
 end;
 $$;

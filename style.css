@@ -357,3 +357,50 @@ textarea { resize: vertical; line-height: 1.5; }
     .data-table th, .data-table td { padding: 6px 4px; }
     .data-input { min-width: 52px; padding: 8px 4px; }
 }
+
+/* ==========================================
+   가설·예측 · 그래프 설명 · 가설 검증 · 역할
+   ========================================== */
+.example-note { font-size: 13px; color: #7c5e10; background: #fff8e1; border-radius: 8px; padding: 8px 12px; margin: 0 0 12px; }
+.prediction-box { background: #fdf7ff; border-color: #e9d5ff; }
+.dep-mirror { font-weight: 800; color: var(--blue-dark); background: #ebf5fb; border-radius: 6px; padding: 6px 10px; }
+.dep-mirror.empty { color: #94a3b8; background: #f1f5f9; font-weight: 600; }
+.hypo-row select { width: auto; }
+.var-row.undecided .var-name::after { content: ' · 미정'; color: #d35400; font-size: 12px; font-weight: 700; }
+.role-note { color: #9a3412; font-size: 13px; margin: 10px 0 0; text-align: right; }
+.role-note:empty { display: none; }
+
+.chart-type-container.described .chart-btn { display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; }
+.chart-name { font-size: 15px; font-weight: 800; }
+.chart-desc { font-size: 12px; font-weight: 500; color: #64748b; line-height: 1.4; word-break: keep-all; }
+.reason-box textarea { margin-top: 4px; }
+
+.recall-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 4px; }
+.recall-card { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.recall-card.result { grid-column: 1 / -1; background: #f0fdf4; border-color: #bbf7d0; }
+.recall-tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--blue-dark); margin-bottom: 6px; }
+.recall-card p { margin: 0; font-size: 15px; line-height: 1.6; font-weight: 600; }
+.field-title small { font-weight: 500; color: var(--gray); font-size: 12px; margin-left: 4px; }
+.news-val-detail h4 { margin: 14px 0 4px; font-size: 14px; }
+.news-val-detail p { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-line; }
+
+/* 이름·역할 */
+.member-form { margin-top: 4px; grid-template-columns: 1fr 1fr; }
+.me-badge { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 16px; padding: 3px 10px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--navy); }
+.me-badge:disabled { cursor: default; }
+.pill-btn { border: none; cursor: pointer; font-family: inherit; }
+.members-pop { position: fixed; top: 52px; right: 16px; z-index: 140; width: 290px; max-width: calc(100% - 32px); background: #fff; border-radius: 14px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2); padding: 12px 14px; }
+.members-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; margin-bottom: 6px; }
+.members-pop ul { list-style: none; margin: 0 0 6px; padding: 0; }
+.members-pop li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.members-pop li.empty span { color: #b0b8c1; }
+.member-modal { background: #fff; border-radius: 18px; padding: 24px; width: 100%; max-width: 380px; }
+.member-modal h3 { margin-bottom: 14px; }
+
+.teacher-banner { background: #4c1d95; color: #fff; text-align: center; font-size: 13px; font-weight: 700; padding: 8px 12px; }
+
+@media (max-width: 760px) {
+    .recall-grid { grid-template-columns: 1fr; }
+    .member-form { grid-template-columns: 1fr; }
+    .chart-desc { font-size: 11px; }
+}

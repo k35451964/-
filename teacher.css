@@ -142,3 +142,14 @@ body.no-scroll { overflow: hidden; }
     .detail-feedback { border-left: none; border-top: 1px solid var(--line); }
     .report-grid { grid-template-columns: 1fr; }
 }
+
+/* 테마 지정 · 모둠원 · 제출자 표시 */
+.theme-assign { width: auto; max-width: 220px; padding: 6px 8px; font-size: 13px; }
+.detail-members h3 { font-size: 15px; margin-bottom: 6px; }
+.member-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.member-chip { background: #eef2ff; color: #3730a3; border-radius: 12px; padding: 3px 10px; font-size: 12px; }
+.rp-by { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--gray); background: #f1f5f9; border-radius: 10px; padding: 2px 10px; }
+.rp-hypo.pred { margin-top: 8px; border-left-color: #a855f7; background: #faf5ff; }
+.rp-validation h4 { margin: 12px 0 4px; font-size: 14px; }
+.rp-validation p { margin: 0; }
+.detail-view.big .rp-validation h4 { font-size: 19px; }

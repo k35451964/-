@@ -56,6 +56,8 @@
             <span id="detail-sub" class="muted"></span>
         </div>
         <div class="detail-actions">
+            <select id="detail-theme" class="theme-assign" onchange="assignTheme(this.value)" title="이 모둠의 테마 지정"></select>
+            <button class="btn btn-small btn-ghost" onclick="openStudentView()" title="학생 화면을 모든 단계 자유 이동 모드로 열기">👀 학생 화면으로 보기</button>
             <button class="btn btn-small btn-ghost" onclick="toggleBigText()" title="토의할 때 화면에 크게 띄우기">🔍 크게 보기</button>
             <button class="btn btn-small btn-ghost danger" onclick="resetTeam()">초기화</button>
             <button class="icon-btn close-detail" onclick="closeDetail()" aria-label="닫기">✕</button>
@@ -64,6 +66,7 @@
     <div class="detail-body">
         <article id="detail-report" class="report"></article>
         <aside class="detail-feedback">
+            <div id="detail-members" class="detail-members"></div>
             <h3>💬 피드백 보내기</h3>
             <div id="detail-feedback-list" class="feedback-list"></div>
             <textarea id="teacher-comment" rows="3" placeholder="가설의 논리성, 그래프 선택의 적절성 등에 대해 피드백을 남겨 주세요."></textarea>
@@ -86,6 +89,9 @@
             <label class="field"><span>모둠 수</span><input type="number" id="new-count" min="1" max="20" value="6"></label>
         </div>
         <button class="btn btn-primary btn-block" onclick="createTeams()">모둠 만들기</button>
+        <h3 class="section-title">테마 자동 배정</h3>
+        <p class="hint">위쪽 필터에서 고른 반의 <b>테마가 없는 모둠</b>에 1조부터 5가지 테마를 차례로 배정해요. 모둠별로 바꾸려면 모둠 상세 화면 위쪽의 테마 선택을 쓰세요.</p>
+        <button class="btn btn-ghost btn-block" onclick="autoAssignThemes()">🎲 테마 차례로 배정하기</button>
         <h3 class="section-title">만든 반 목록</h3>
         <div id="class-list" class="class-list"></div>
     </div>

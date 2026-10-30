@@ -7,17 +7,21 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="devices.css">
+    <link rel="stylesheet" href="scenes.css">
 </head>
 <body>
+
+<div id="teacher-banner" class="teacher-banner" hidden>👩‍🏫 교사 보기 모드 · 모든 단계를 자유롭게 넘겨 볼 수 있어요. (여기서 입력하면 학생 화면에도 반영돼요)</div>
 
 <!-- 상단 바: 모둠 정보, 접속 인원, 저장 상태 -->
 <header class="topbar" id="topbar" hidden>
     <div class="topbar-team">
         <span id="team-badge"></span>
+        <button id="me-badge" class="me-badge" onclick="openMemberModal()" title="이름·역할 바꾸기"></button>
         <span id="theme-badge" class="muted"></span>
     </div>
     <div class="topbar-right">
-        <span id="online-badge" class="pill" title="지금 이 모둠으로 접속한 기기 수"></span>
+        <button id="online-badge" class="pill pill-btn" onclick="toggleMembers()" title="지금 접속한 모둠원 보기"></button>
         <span id="save-status" class="pill"></span>
         <button class="link-btn" onclick="leaveTeam()">나가기</button>
     </div>
@@ -58,6 +62,17 @@
                     <select id="team-select"></select>
                 </label>
             </div>
+            <div class="intro-form member-form">
+                <label class="field">
+                    <span>내 이름</span>
+                    <input type="text" id="member-name" maxlength="10" autocomplete="off" placeholder="이름">
+                </label>
+                <label class="field member-role-field">
+                    <span>내 역할</span>
+                    <select id="member-role"></select>
+                </label>
+            </div>
+            <p class="hint center" id="role-duty"></p>
         </div>
         <p id="intro-msg" class="intro-msg"></p>
         <button class="btn btn-primary btn-block" id="enter-btn" onclick="enterTeam()" hidden>탐구 시작하기</button>
@@ -88,9 +103,10 @@
             </label>
         </div>
 
+        <p class="role-note" id="story-role-note"></p>
         <div class="action-row">
             <button class="btn btn-ghost" id="change-theme-btn" onclick="showThemeScreen()">다른 테마 고르기</button>
-            <button class="btn btn-primary" onclick="advance(2)">💡 탐구 문제 파악 완료! 가설 세우기</button>
+            <button class="btn btn-primary" id="finish-story-btn" onclick="finishStory()">💡 탐구 문제 파악 완료! 탐구 설계하기</button>
         </div>
     </section>
 
@@ -107,26 +123,53 @@
         <div id="design-check" class="design-check"></div>
 
         <h3 class="section-title">가설 설정</h3>
-        <p class="hint">위에서 설정한 변인을 바탕으로 탐구 가설을 완성해 보자.</p>
+        <p class="hint">조작 변인이 <b>종속 변인</b>(실험에서 측정해 알아볼 결과)에 어떤 영향을 주는지 가설을 세워 보자.</p>
+        <p class="example-note">💡 회색 글씨 예시는 <b>다른 실험(식물 키우기)</b>의 예시예요. 우리 실험에 맞게 직접 써 보자.</p>
         <div class="hypothesis-box">
             <div class="hypo-row">
-                <span class="hypo-label">만약 통제 변인인</span>
-                <input type="text" id="hypo-control" data-key="hypo.control" class="hypo-wide">
-                <span>상태에서</span>
+                <input type="text" id="hypo-control" data-key="hypo.control" class="hypo-wide" placeholder="예: 화분 크기, 물을 주는 양">
+                <span>이(가) 같을 때,</span>
             </div>
             <div class="hypo-row">
-                <span class="hypo-label">조작 변인으로</span>
-                <input type="text" id="hypo-manipulated-ctrl" data-key="hypo.mctrl">
-                <span>대신</span>
-                <input type="text" id="hypo-manipulated-exp" data-key="hypo.mexp">
-                <span>을(를) 적용한다면,</span>
-            </div>
-            <div class="hypo-row">
-                <span class="hypo-label">결과는</span>
-                <input type="text" id="hypo-predict" data-key="hypo.predict" class="hypo-wide">
-                <span>것이다.</span>
+                <input type="text" id="hypo-manip" data-key="hypo.manip" placeholder="예: 햇빛을 받는 시간">
+                <span>은(는)</span>
+                <input type="text" id="hypo-dep" data-key="hypo.dep" placeholder="예: 식물의 키">
+                <span>에 영향을</span>
+                <select id="hypo-effect" data-key="hypo.effect">
+                    <option value="">-- 선택 --</option>
+                    <option value="준다">준다</option>
+                    <option value="주지 않는다">주지 않는다</option>
+                </select>
             </div>
         </div>
+
+        <h3 class="section-title">예측</h3>
+        <p class="hint">가설이 맞다면 실험에서 어떤 결과가 나올지 예측해 보자.</p>
+        <div class="hypothesis-box prediction-box">
+            <div class="hypo-row">
+                <span class="hypo-label">만약</span>
+                <input type="text" id="pred-b" data-key="pred.b" placeholder="예: 햇빛 2시간">
+                <span>대신</span>
+                <input type="text" id="pred-c" data-key="pred.c" placeholder="예: 햇빛 8시간">
+                <span>을(를) 적용하면,</span>
+            </div>
+            <div class="hypo-row">
+                <span class="dep-mirror" id="pred-dep">(종속 변인)</span>
+                <span>은(는)</span>
+                <select id="pred-dir" data-key="pred.dir">
+                    <option value="">-- 선택 --</option>
+                    <option value="더 클(많을)">더 클(많을)</option>
+                    <option value="더 작을(적을)">더 작을(적을)</option>
+                    <option value="비슷할">비슷할</option>
+                </select>
+                <span>것이다.</span>
+            </div>
+            <div class="hypo-row">
+                <span class="hypo-label">구체적으로 (선택)</span>
+                <input type="text" id="pred-detail" data-key="pred.detail" class="hypo-wide" placeholder="예: 일주일 뒤 키 차이가 2cm 이상 날 것이다">
+            </div>
+        </div>
+        <p class="role-note" id="design-role-note"></p>
 
         <button id="submit-s1-btn" class="btn btn-orange btn-block" onclick="submitDesign()">📝 설계 결과 전송하기</button>
         <div class="next-step-container">
@@ -147,10 +190,13 @@
         <div class="measure-container">
             <div class="measure-target">
                 측정할 대상:
-                <label><input type="radio" name="measure-target" value="ctrl" checked onchange="setMeasureTarget(this.value)"> 대조군</label>
-                <label><input type="radio" name="measure-target" value="exp" onchange="setMeasureTarget(this.value)"> 실험군</label>
+                <label><input type="radio" name="measure-target" value="ctrl" checked onchange="setMeasureTarget(this.value)"> <span id="target-label-ctrl">대조군</span></label>
+                <label><input type="radio" name="measure-target" value="exp" onchange="setMeasureTarget(this.value)"> <span id="target-label-exp">실험군</span></label>
             </div>
-            <div id="dynamic-device-area"></div>
+            <div class="measure-stage">
+                <div id="scene-area" class="scene-area"></div>
+                <div id="dynamic-device-area"></div>
+            </div>
             <div class="measure-buttons">
                 <button id="measure-btn" class="btn btn-primary btn-round" onclick="measureData()"></button>
                 <button id="mem-btn" class="btn btn-ghost btn-round" onclick="showMemory()" title="이전에 측정한 값을 다시 보기">MEM 기록 보기</button>
@@ -172,41 +218,25 @@
         <div id="chart1-section" class="chart-section">
             <h3 class="section-title">1차 시각화: 로우 데이터 (전체 흐름 파악)</h3>
             <p class="hint">시간에 따른 전체 데이터의 변화를 가장 잘 보여 주는 그래프를 골라 보자.</p>
-            <div class="chart-type-container" data-kind="1">
-                <button class="chart-btn" data-type="line" onclick="chooseChart(1, 'line')">📈 선 그래프</button>
-                <button class="chart-btn" data-type="bar" onclick="chooseChart(1, 'bar')">📊 막대그래프</button>
-                <button class="chart-btn" data-type="pie" onclick="chooseChart(1, 'pie')">🍕 원그래프</button>
-                <button class="chart-btn" data-type="scatter" onclick="chooseChart(1, 'scatter')">✨ 분산형 그래프</button>
+            <div class="chart-type-container described" data-kind="1">
+                <button class="chart-btn" data-type="line" onclick="chooseChart(1, 'line')"><span class="chart-name">📈 선 그래프</span><span class="chart-desc">시간 또는 순서에 따른 데이터의 변화를 추적할 때 사용한다.</span></button>
+                <button class="chart-btn" data-type="bar" onclick="chooseChart(1, 'bar')"><span class="chart-name">📊 막대그래프</span><span class="chart-desc">범주로 구분할 수 있는 데이터의 빈도나 비율을 비교할 때 사용한다.</span></button>
+                <button class="chart-btn" data-type="pie" onclick="chooseChart(1, 'pie')"><span class="chart-name">🍕 원그래프</span><span class="chart-desc">전체에서 각 범주가 차지하는 비율을 보여 줄 때 사용한다.</span></button>
+                <button class="chart-btn" data-type="scatter" onclick="chooseChart(1, 'scatter')"><span class="chart-name">✨ 분산형 그래프</span><span class="chart-desc">두 변수 간의 상관관계나 패턴을 파악할 때 사용한다.</span></button>
             </div>
             <div class="canvas-container" id="chart-area-1" hidden><canvas id="resultChart1"></canvas></div>
             <p class="chart-note" id="chart-note-1"></p>
 
             <div class="reason-box">
                 <p class="reason-q">이 그래프를 1차 그래프로 선택한 이유는 무엇인가?</p>
-                <div class="reason-sentence">
-                    "우리 조가 수집한 데이터는
-                    <select id="reason1-1" data-key="reason1.1">
-                        <option value="">-- 데이터 특징 선택 --</option>
-                        <option value="시간에 따른 연속적인 변화 흐름">시간에 따른 연속적인 변화 흐름</option>
-                        <option value="각 시간대별 단순 크기 비교">각 시간대별 단순 크기 비교</option>
-                        <option value="전체에서 차지하는 특정 시점의 비율">전체에서 차지하는 특정 시점의 비율</option>
-                        <option value="두 값 사이의 관계와 분포">두 값 사이의 관계와 분포</option>
-                    </select>
-                    을(를) 파악하는 것이 중요하므로, 이를 가장 잘 표현하는
-                    <select id="reason1-2" data-key="reason1.2">
-                        <option value="">-- 그래프 종류 선택 --</option>
-                        <option value="선 그래프">선 그래프</option>
-                        <option value="막대그래프">막대그래프</option>
-                        <option value="원그래프">원그래프</option>
-                        <option value="분산형 그래프">분산형 그래프</option>
-                    </select>
-                    를(을) 선택했다."
-                </div>
+                <p class="hint">위의 그래프 설명을 참고해서, 우리 데이터의 특징과 연결해 직접 써 보자.</p>
+                <textarea id="reason1-text" data-key="reason1.text" rows="3" placeholder="예: 우리 데이터는 ○○을(를) 보여 주는 것이 중요하므로 ○○ 그래프를 선택했다. 왜냐하면 ..."></textarea>
             </div>
         </div>
 
+        <p class="role-note" id="experiment-role-note"></p>
         <div class="next-step-container">
-            <button class="btn btn-primary" onclick="finishExperiment()">다음 단계: 데이터 분석하기 →</button>
+            <button class="btn btn-primary" id="finish-experiment-btn" onclick="finishExperiment()">다음 단계: 데이터 분석하기 →</button>
         </div>
     </section>
 
@@ -257,8 +287,8 @@
                         </th></tr>
                     </thead>
                     <tbody>
-                        <tr><td class="row-ctrl">대조군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-c" data-key="summary.c" placeholder="예: 55"></td></tr>
-                        <tr><td class="row-exp">실험군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-e" data-key="summary.e" placeholder="예: 3"></td></tr>
+                        <tr><td class="row-ctrl" id="summary-label-c">대조군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-c" data-key="summary.c" placeholder="예: 55"></td></tr>
+                        <tr><td class="row-exp" id="summary-label-e">실험군</td><td><input type="number" step="any" inputmode="decimal" class="data-input" id="summary-e" data-key="summary.e" placeholder="예: 3"></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -298,17 +328,41 @@
         <!-- 가설 검증 및 결론 -->
         <div id="validation-section" class="validation-box">
             <h3>가설 검증 및 결론 도출</h3>
-            <p class="hint">1차, 2차 그래프를 종합해서 처음에 세웠던 가설이 맞는지 판단해 보자.</p>
-            <p class="hypo-recall" id="hypo-recall"></p>
+            <p class="hint">처음 세운 가설과 예측을 실제 결과(1·2차 그래프)와 비교해 보자.</p>
+            <div class="recall-grid">
+                <div class="recall-card"><span class="recall-tag">💡 우리 가설</span><p id="hypo-recall"></p></div>
+                <div class="recall-card"><span class="recall-tag">🔮 우리 예측</span><p id="pred-recall"></p></div>
+                <div class="recall-card result"><span class="recall-tag">📊 실제 결과 (2차 그래프의 핵심 수치)</span><p id="result-recall"></p></div>
+            </div>
             <div class="val-buttons">
                 <button id="btn-accept" class="val-btn" onclick="selectValidation('수용')">⭕ 가설 수용</button>
                 <button id="btn-reject" class="val-btn" onclick="selectValidation('기각')">❌ 가설 기각</button>
             </div>
-            <label class="field">
-                <span class="field-title">최종 결론 한 마디</span>
-                <textarea id="conclusion-input" data-key="conclusion" rows="3" placeholder="탐구 결과를 종합해 알게 된 사실(결론)을 명확하게 적어 보자."></textarea>
-            </label>
-            <button class="btn btn-green btn-block" onclick="finishAnalysis()">✔️ 분석 완료! 결과 제출하기</button>
+            <div id="val-fields" hidden>
+                <p class="example-note">💡 회색 글씨 예시는 <b>다른 실험(식물 키우기)</b>의 예시예요. 우리 실험에 맞게 직접 써 보자.</p>
+                <label class="field">
+                    <span class="field-title">📌 판단 근거 <small>예측과 실제 결과를 비교해 쓰자</small></span>
+                    <textarea id="val-evidence" data-key="val.evidence" rows="3" placeholder="예: 예측에서는 8시간 쪽이 더 자랄 것이라고 했는데, 1차 그래프를 보면 3일째부터 8시간 쪽의 키가 계속 더 컸고, 2차 그래프에서 최종 키 차이가 2.4cm였다."></textarea>
+                </label>
+                <div id="val-accept-fields" hidden>
+                    <label class="field">
+                        <span class="field-title">✅ 탐구 결론</span>
+                        <textarea id="conclusion-input" data-key="conclusion" rows="2" placeholder="예: 화분 크기와 물의 양이 같을 때, 햇빛을 받는 시간이 길수록 식물은 더 많이 자란다."></textarea>
+                    </label>
+                </div>
+                <div id="val-reject-fields" hidden>
+                    <label class="field">
+                        <span class="field-title">🔧 가설 수정 방안 <small>결과를 설명할 수 있도록 가설을 고쳐 보자</small></span>
+                        <textarea id="val-revised" data-key="val.revised" rows="2" placeholder="예: 화분 크기와 물의 양이 같을 때, 햇빛 시간보다 온도가 식물의 키에 더 큰 영향을 준다."></textarea>
+                    </label>
+                    <label class="field">
+                        <span class="field-title">🔮 수정한 가설에 따른 새로운 예측</span>
+                        <textarea id="val-new-prediction" data-key="val.newPrediction" rows="2" placeholder="예: 만약 20℃ 대신 30℃에서 키우면, 식물의 키는 더 클 것이다."></textarea>
+                    </label>
+                </div>
+            </div>
+            <p class="role-note" id="analysis-role-note"></p>
+            <button class="btn btn-green btn-block" id="finish-analysis-btn" onclick="finishAnalysis()">✔️ 분석 완료! 결과 제출하기</button>
         </div>
     </section>
 
@@ -323,6 +377,8 @@
                 <div class="news-col">
                     <h3>💡 탐구 가설</h3>
                     <p id="news-hypo-text" class="news-hypo"></p>
+                    <h3>🔮 예측</h3>
+                    <p id="news-pred-text" class="news-hypo"></p>
                     <h3>📈 과정 추이 (1차 분석)</h3>
                     <img id="news-chart1-img" alt="로우 데이터 1차 그래프">
                     <p id="news-reason1-text" class="news-reason"></p>
@@ -339,15 +395,30 @@
                 <div class="news-col">
                     <h3>✅ 가설 검증</h3>
                     <div class="center"><span id="news-val-text" class="news-val"></span></div>
-                    <h3>📝 최종 결론</h3>
-                    <p id="news-conclusion-text"></p>
+                    <div id="news-val-detail" class="news-val-detail"></div>
                     <h3>🤔 기자의 비판적 고찰</h3>
                     <textarea id="reflection-input" data-key="reflection" rows="6" placeholder="통제하지 못한 변인은 없었는지, 데이터의 한계점과 오차 원인을 비판적으로 작성해 보자."></textarea>
                 </div>
             </div>
+            <p class="role-note" id="newspaper-role-note"></p>
             <button class="btn btn-dark btn-block final-submit-btn" id="final-submit-btn" onclick="submitNewspaper()">🚀 최종 신문 발행 및 선생님께 제출</button>
         </div>
     </section>
+</div>
+
+<div id="members-pop" class="members-pop" hidden></div>
+
+<!-- 이름·역할 바꾸기 -->
+<div id="member-modal" class="overlay" hidden>
+    <div class="member-modal">
+        <h3>내 이름과 역할</h3>
+        <label class="field"><span>내 이름</span><input type="text" id="member-name-edit" maxlength="10"></label>
+        <label class="field"><span>내 역할</span><select id="member-role-edit"></select></label>
+        <div class="action-row">
+            <button class="btn btn-ghost" onclick="closeMemberModal()">취소</button>
+            <button class="btn btn-primary" onclick="saveMember()">저장</button>
+        </div>
+    </div>
 </div>
 
 <!-- 분석 완료 축하 화면 -->
@@ -380,6 +451,7 @@
 <script src="themes.js"></script>
 <script src="common.js"></script>
 <script src="devices.js"></script>
+<script src="scenes.js"></script>
 <script src="ai.js"></script>
 <script src="app.js"></script>
 </body>
