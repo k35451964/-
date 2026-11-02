@@ -648,11 +648,12 @@ function buildReport(t, aiMsgs) {
     return `
     <div class="report-grid">
         ${sec('1. 문제 인식', `<p>${text(s.problem)}</p>${by('story')}`, '', 1)}
-        ${sec('2. 탐구 설계', `
+        ${sec('2. 가설 설정과 실험 설계', `
+            <div class="rp-hypo"><span class="rp-tag ${submitted ? 'ok' : ''}">${submitted ? '전송됨' : '작성 중'}</span> <b>① 가설</b> ${escapeHtml(hypo)}</div>
+            <p class="rp-subhead"><b>② 실험 설계</b></p>
             <table class="rp-table"><thead><tr><th>변인</th><th>방법</th><th>대조군</th><th>실험군</th></tr></thead><tbody>${designRows}</tbody></table>
             ${checkHtml}
-            <div class="rp-hypo"><span class="rp-tag ${submitted ? 'ok' : ''}">${submitted ? '전송됨' : '작성 중'}</span> <b>가설</b> ${escapeHtml(hypo)}</div>
-            <div class="rp-hypo pred"><b>예측</b> ${escapeHtml(pred)}</div>${by('design')}`, '', 2)}
+            <div class="rp-hypo pred"><b>③ 예측</b> ${escapeHtml(pred)}</div>${by('design')}`, '', 2)}
         ${sec(`3. 측정 기록 <small>(${escapeHtml(m.name)}, ${escapeHtml(m.unit)})</small>`, `
             <div class="table-scroll"><table class="rp-table data"><thead><tr><th>구분</th>${m.labels.map(l => `<th>${l}</th>`).join('')}</tr></thead>
             <tbody>${dataRow('c', escapeHtml(cl), 'row-ctrl')}${dataRow('e', escapeHtml(el), 'row-exp')}</tbody></table></div>

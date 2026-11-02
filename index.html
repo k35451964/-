@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웹 기반 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261103a">
-    <link rel="stylesheet" href="newspaper.css?v=20261103a">
-    <link rel="stylesheet" href="devices.css?v=20261103a">
-    <link rel="stylesheet" href="scenes.css?v=20261103a">
+    <link rel="stylesheet" href="style.css?v=20261103b">
+    <link rel="stylesheet" href="newspaper.css?v=20261103b">
+    <link rel="stylesheet" href="devices.css?v=20261103b">
+    <link rel="stylesheet" href="scenes.css?v=20261103b">
 </head>
 <body>
 
@@ -113,18 +113,15 @@
 
     <!-- 2. 탐구 설계 (변인 통제 + 가설) -->
     <section id="hypothesis-screen" class="screen">
-        <h2>2. 탐구 설계 (변인 통제)</h2>
+        <h2>2. 가설 설정과 실험 설계</h2>
+        <p class="lead">가설 설정 → 실험 설계 → 예측 순서로 탐구를 설계해 보자.</p>
         <div id="design-lock" class="notice notice-lock" hidden>
             🔒 측정이 시작되어 설계가 잠겼어요. 설계를 바꾸려면 측정 기록을 지우고 다시 해야 해요.
             <button class="btn btn-small btn-ghost" onclick="resetDesign()">설계 다시 하기</button>
         </div>
 
-        <p class="hint">각 변인을 대조군과 실험군에서 <b>다르게(조작)</b> 할지 <b>같게(통제)</b> 할지 정해 보자.</p>
-        <div class="variable-table" id="dynamic-var-table"></div>
-        <div id="design-check" class="design-check"></div>
-
-        <h3 class="section-title">가설 설정</h3>
-        <p class="hint">조작 변인이 <b>종속 변인</b>(실험에서 측정해 알아볼 결과)에 어떤 영향을 주는지 가설을 세워 보자.</p>
+        <h3 class="section-title step-title"><span class="step-badge">①</span> 가설 설정</h3>
+        <p class="hint">문제 인식 단계에서 찾은 미스터리의 답을 미리 세워 보자. 어떤 조건(조작 변인)이 결과(<b>종속 변인</b>, 실험에서 측정할 값)에 영향을 주는지 가설로 쓴다.</p>
         <p class="example-note">💡 회색 글씨 예시는 <b>다른 실험(식물 키우기)</b>의 예시예요. 우리 실험에 맞게 직접 써 보자.</p>
         <div class="hypothesis-box">
             <div class="hypo-row">
@@ -144,8 +141,13 @@
             </div>
         </div>
 
-        <h3 class="section-title">예측</h3>
-        <p class="hint">가설이 맞다면 실험 결과가 어떻게 나올지 골라 보자. 대조군·실험군 값은 위 변인 표에서 자동으로 가져온다.</p>
+        <h3 class="section-title step-title"><span class="step-badge">②</span> 실험 설계 (변인 통제)</h3>
+        <p class="hint">세운 가설을 검증할 실험을 설계하자. 각 변인을 대조군과 실험군에서 <b>다르게(조작)</b> 할지 <b>같게(통제)</b> 할지 정한다.</p>
+        <div class="variable-table" id="dynamic-var-table"></div>
+        <div id="design-check" class="design-check"></div>
+
+        <h3 class="section-title step-title"><span class="step-badge">③</span> 예측</h3>
+        <p class="hint">가설이 맞다면 설계한 실험에서 어떤 결과가 나올지 골라 보자. 대조군·실험군 값은 위 실험 설계에서 자동으로 가져온다.</p>
         <div class="hypothesis-box prediction-box">
             <div class="hypo-row">
                 <span class="hypo-label">만약</span>
@@ -414,12 +416,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="config.js?v=20261103a"></script>
-<script src="themes.js?v=20261103a"></script>
-<script src="common.js?v=20261103a"></script>
-<script src="devices.js?v=20261103a"></script>
-<script src="scenes.js?v=20261103a"></script>
-<script src="ai.js?v=20261103a"></script>
-<script src="app.js?v=20261103a"></script>
+<script src="config.js?v=20261103b"></script>
+<script src="themes.js?v=20261103b"></script>
+<script src="common.js?v=20261103b"></script>
+<script src="devices.js?v=20261103b"></script>
+<script src="scenes.js?v=20261103b"></script>
+<script src="ai.js?v=20261103b"></script>
+<script src="app.js?v=20261103b"></script>
 </body>
 </html>

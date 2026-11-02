@@ -940,17 +940,18 @@ function refreshDesign() {
 function submitDesign() {
     const th = theme();
     const check = checkDesign(th, state);
-    if (check.errors.length) {
-        alert(check.errors.join('\n'));
+    if (!canSubmit('design')) return;
+    // 화면 순서대로 확인: ① 가설 → ② 실험 설계 → ③ 예측
+    if (HYPO_KEYS.some(k => !(state[k] || '').trim())) {
+        alert('① 가설 문장의 빈칸을 모두 채워 주세요!');
         return;
     }
-    if (!canSubmit('design')) return;
-    if (HYPO_KEYS.some(k => !(state[k] || '').trim())) {
-        alert('가설 문장의 빈칸을 모두 채워 주세요!');
+    if (check.errors.length) {
+        alert(`② 실험 설계를 확인해 주세요.\n${check.errors.join('\n')}`);
         return;
     }
     if (PRED_KEYS.some(k => !(state[k] || '').trim())) {
-        alert('예측에서 결과가 어떻게 될지(더 클 / 더 작을 / 비슷할) 골라 주세요!');
+        alert('③ 예측에서 결과가 어떻게 될지(더 클 / 더 작을 / 비슷할) 골라 주세요!');
         return;
     }
     if (check.warnings.length && !confirm(`${check.warnings.join('\n')}\n\n이대로 전송할까요?`)) return;

@@ -10,7 +10,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY,
 
 const STAGES = [
     { no: 1, name: '문제 인식', screen: 'story-screen' },
-    { no: 2, name: '탐구 설계', screen: 'hypothesis-screen' },
+    { no: 2, name: '가설·실험 설계', screen: 'hypothesis-screen' },
     { no: 3, name: '실험·데이터', screen: 'simulation-screen' },
     { no: 4, name: '분석·검증', screen: 'analysis-screen' },
     { no: 5, name: '과학 신문', screen: 'newspaper-screen' },
@@ -671,11 +671,12 @@ function buildNewspaperHtml({ team, theme, state, chart1Url, chart2Url, editable
 
         <div class="np-grid">
             <section class="np-col">
+                <h3 class="np-head">과감한 가설을 세우다</h3>
+                <div class="np-quote"><span class="np-label">가설</span>${text(s.hypothesis || (s['hypo.manip'] ? composeHypothesis(s) : ''))}</div>
                 <h3 class="np-head">그들은 탐구 설계부터 남달랐다</h3>
                 <p class="np-deck">조작 변인 ${nManip}개, 통제 변인 ${theme.vars.length - nManip}개 — 공정한 비교를 위한 치밀한 준비</p>
                 <table class="np-table"><thead><tr><th>변인</th><th>${escapeHtml(cl)}</th><th>${escapeHtml(el)}</th></tr></thead><tbody>${designRows}</tbody></table>
-                <h3 class="np-head">과감한 가설, 대담한 예측</h3>
-                <div class="np-quote"><span class="np-label">가설</span>${text(s.hypothesis || (s['hypo.manip'] ? composeHypothesis(s) : ''))}</div>
+                <h3 class="np-head">결과를 내다본 대담한 예측</h3>
                 <div class="np-quote pred"><span class="np-label">예측</span>${text(s.prediction || (s['pred.dir'] ? composePrediction(s, theme) : ''))}</div>
             </section>
 

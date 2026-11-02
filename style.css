@@ -452,3 +452,6 @@ textarea { resize: vertical; line-height: 1.5; }
 .editing-layer { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 90; pointer-events: none; }
 .editing-tag { position: absolute; color: #fff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px 6px 6px 0; white-space: nowrap; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); }
 .being-edited { outline: 2px solid var(--edit-color, #8e44ad) !important; outline-offset: 1px; border-radius: 6px; }
+.step-title { display: flex; align-items: center; gap: 8px; }
+.step-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 15px; }
+#hypothesis-screen .section-title:first-of-type { margin-top: 10px; }
