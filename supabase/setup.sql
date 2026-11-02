@@ -104,7 +104,7 @@ create table if not exists public.teams (
     class_no smallint not null check (class_no between 1 and 30),
     team_no smallint not null check (team_no between 1 and 20),
     theme_id text check (theme_id in ('cola', 'osmosis', 'selection', 'vaccine', 'penicillin')),
-    stage smallint not null default 0 check (stage between 0 and 5),
+    stage smallint not null default 0,
     state jsonb not null default '{}'::jsonb,
     -- Supabase 표 화면에서 바로 읽기 편하도록 state에서 자동으로 뽑아 보여 주는 칸
     hypothesis text generated always as (state ->> 'hypothesis') stored,
@@ -183,7 +183,7 @@ language plpgsql security definer set search_path = public
 as $$
 begin
     update public.teams
-       set stage = greatest(stage, least(greatest(p_stage, 0), 5))
+       set stage = greatest(stage, least(greatest(p_stage, 0), 6))
      where id = p_team_id;
     return found;
 end;
@@ -267,6 +267,66 @@ create policy "messages_teacher_insert" on public.messages for insert to authent
 create policy "messages_teacher_delete" on public.messages for delete to authenticated
     using (exists (select 1 from public.teams t where t.id = team_id and t.teacher_id = public.my_teacher_id()));
 
+-- 진행 단계: 0(입장 전) ~ 6(평가)
+alter table public.teams drop constraint if exists teams_stage_check;
+alter table public.teams add constraint teams_stage_check check (stage between 0 and 6);
+
+-- [5-2] 자기평가 · 동료평가 -------------------------------------------
+-- kind: self(자기평가) / peer(같은 모둠원 평가, target=평가받는 학생 이름) / team(다른 모둠 발표 평가, target=그 모둠 id)
+-- 누가 누구를 평가했는지는 교사만 볼 수 있다 (학생은 자기 답만 함수로 불러옴)
+create table if not exists public.evaluations (
+    id bigint generated always as identity primary key,
+    team_id uuid not null references public.teams(id) on delete cascade,
+    evaluator_name text not null check (char_length(evaluator_name) between 1 and 20),
+    evaluator_role text,
+    kind text not null check (kind in ('self', 'peer', 'team')),
+    target text not null default '',
+    answers jsonb not null default '{}'::jsonb,
+    updated_at timestamptz not null default now(),
+    unique (team_id, evaluator_name, kind, target)
+);
+alter table public.evaluations enable row level security;
+drop policy if exists "evaluations_read_own" on public.evaluations;
+drop policy if exists "evaluations_teacher_delete" on public.evaluations;
+create policy "evaluations_read_own" on public.evaluations for select to authenticated
+    using (exists (select 1 from public.teams t where t.id = team_id and t.teacher_id = public.my_teacher_id()));
+create policy "evaluations_teacher_delete" on public.evaluations for delete to authenticated
+    using (exists (select 1 from public.teams t where t.id = team_id and t.teacher_id = public.my_teacher_id()));
+
+-- 학생: 평가 저장 (같은 대상은 덮어쓰기)
+create or replace function public.save_evaluation(p_team_id uuid, p_name text, p_role text, p_kind text, p_target text, p_answers jsonb)
+returns boolean
+language plpgsql security definer set search_path = public
+as $$
+begin
+    if p_answers is null or jsonb_typeof(p_answers) <> 'object' or length(p_answers::text) > 8000 then
+        raise exception 'invalid answers';
+    end if;
+    if not exists (select 1 from public.teams where id = p_team_id) then
+        return false;
+    end if;
+    insert into public.evaluations (team_id, evaluator_name, evaluator_role, kind, target, answers, updated_at)
+    values (p_team_id, left(trim(p_name), 20), p_role, p_kind, coalesce(p_target, ''), p_answers, now())
+    on conflict (team_id, evaluator_name, kind, target)
+    do update set answers = excluded.answers, evaluator_role = excluded.evaluator_role, updated_at = now();
+    return true;
+end;
+$$;
+
+-- 학생: 내가 쓴 평가만 다시 불러오기
+create or replace function public.my_evaluations(p_team_id uuid, p_name text)
+returns table (kind text, target text, answers jsonb)
+language sql stable security definer set search_path = public
+as $$
+    select e.kind, e.target, e.answers from public.evaluations e
+    where e.team_id = p_team_id and e.evaluator_name = left(trim(p_name), 20);
+$$;
+
+revoke all on function public.save_evaluation(uuid, text, text, text, text, jsonb) from public;
+revoke all on function public.my_evaluations(uuid, text) from public;
+grant execute on function public.save_evaluation(uuid, text, text, text, text, jsonb) to anon, authenticated;
+grant execute on function public.my_evaluations(uuid, text) to anon, authenticated;
+
 -- [6] 실시간(Realtime) 켜기 -------------------------------------------
 do $$
 begin
@@ -275,6 +335,9 @@ begin
     end if;
     if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages') then
         alter publication supabase_realtime add table public.messages;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'evaluations') then
+        alter publication supabase_realtime add table public.evaluations;
     end if;
 end;
 $$;

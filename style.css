@@ -416,3 +416,24 @@ textarea { resize: vertical; line-height: 1.5; }
 .metric-card.custom { border-style: dashed; }
 .ai-custom-hint { margin: 0 0 8px; font-size: 13px; }
 @media (max-width: 760px) { .custom-fields { grid-template-columns: 1fr; } }
+
+/* 6. 평가 */
+.eval-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.eval-tab { padding: 12px 8px; border-radius: 12px; border: 2px solid var(--line); background: #fff; font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; color: var(--navy); }
+.eval-tab.active { border-color: var(--blue); background: #ebf5fb; }
+.eval-panel { display: flex; flex-direction: column; gap: 14px; }
+.eval-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: #fff; }
+.eval-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: 16px; }
+.star-row { display: grid; grid-template-columns: 1fr auto 110px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+.star-q { font-size: 14px; line-height: 1.5; }
+.eval-std { color: #94a3b8; font-size: 11px; }
+.stars { display: flex; gap: 2px; }
+.star-btn { border: none; background: none; font-size: 28px; line-height: 1; color: #d5dbdb; cursor: pointer; padding: 0 2px; }
+.star-btn.on { color: #f5b301; }
+.star-label { font-size: 12px; color: var(--gray); font-weight: 700; }
+.eval-field { margin-top: 10px; }
+@media (max-width: 760px) {
+    .star-row { grid-template-columns: 1fr auto; }
+    .star-label { grid-column: 1 / -1; }
+    .eval-tabs { grid-template-columns: 1fr; }
+}

@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웹 기반 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261031a">
-    <link rel="stylesheet" href="newspaper.css?v=20261031a">
-    <link rel="stylesheet" href="devices.css?v=20261031a">
-    <link rel="stylesheet" href="scenes.css?v=20261031a">
+    <link rel="stylesheet" href="style.css?v=20261102a">
+    <link rel="stylesheet" href="newspaper.css?v=20261102a">
+    <link rel="stylesheet" href="devices.css?v=20261102a">
+    <link rel="stylesheet" href="scenes.css?v=20261102a">
 </head>
 <body>
 
@@ -339,6 +339,23 @@
         <div id="newspaper-area" class="newspaper-area"></div>
         <p class="role-note" id="newspaper-role-note"></p>
         <button class="btn btn-dark btn-block final-submit-btn" id="final-submit-btn" onclick="submitNewspaper()">🚀 최종 신문 발행 및 선생님께 제출</button>
+        <div class="next-step-container">
+            <button class="btn btn-primary" onclick="advance(6)">다음 단계: 평가하기 →</button>
+        </div>
+    </section>
+
+    <!-- 6. 평가 (개인별) -->
+    <section id="evaluation-screen" class="screen">
+        <h2>6. 평가</h2>
+        <p class="hint center">평가는 <b>나 혼자</b> 작성해요. 누가 썼는지는 선생님만 볼 수 있어요. 입력하면 자동으로 저장돼요. <span id="eval-status" class="pill"></span></p>
+        <p id="eval-teacher-note" class="notice notice-lock" hidden>교사 보기 모드에서는 평가를 작성하지 않아요. 학생들의 평가 결과는 교사 대시보드의 ‘📋 평가 결과’와 모둠 상세의 ‘6. 평가’ 탭에서 볼 수 있어요.</p>
+        <div class="eval-tabs" id="eval-tabs">
+            <button class="eval-tab" data-tab="team" onclick="setEvalTab('team')">🎤 다른 모둠 발표 평가</button>
+            <button class="eval-tab" data-tab="self" onclick="setEvalTab('self')">🙋 자기평가</button>
+            <button class="eval-tab" data-tab="peer" onclick="setEvalTab('peer')">🤝 모둠원 평가</button>
+        </div>
+        <p class="hint" id="eval-tab-hint"></p>
+        <div id="eval-panel" class="eval-panel"></div>
     </section>
 </div>
 
@@ -383,12 +400,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="config.js?v=20261031a"></script>
-<script src="themes.js?v=20261031a"></script>
-<script src="common.js?v=20261031a"></script>
-<script src="devices.js?v=20261031a"></script>
-<script src="scenes.js?v=20261031a"></script>
-<script src="ai.js?v=20261031a"></script>
-<script src="app.js?v=20261031a"></script>
+<script src="config.js?v=20261102a"></script>
+<script src="themes.js?v=20261102a"></script>
+<script src="common.js?v=20261102a"></script>
+<script src="devices.js?v=20261102a"></script>
+<script src="scenes.js?v=20261102a"></script>
+<script src="ai.js?v=20261102a"></script>
+<script src="app.js?v=20261102a"></script>
 </body>
 </html>

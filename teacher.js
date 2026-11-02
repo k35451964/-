@@ -7,6 +7,8 @@
 let myInfo = null;            // { id, code, name }
 let teams = [];
 let allMessages = [];
+let allEvals = [];
+let evalResultTab = 'summary';
 let onlineByTeam = {};
 let membersByTeam = {};
 let detailId = null;
@@ -93,10 +95,12 @@ function sortTeams() {
 }
 
 async function loadAll() {
-    const [t, m] = await Promise.all([
+    const [t, m, ev] = await Promise.all([
         sb.from('teams').select('*'),
-        sb.from('messages').select('*').order('id')
+        sb.from('messages').select('*').order('id'),
+        sb.from('evaluations').select('*')
     ]);
+    allEvals = ev.data || [];
     if (t.error) {
         console.error(t.error);
         toast('모둠 정보를 불러오지 못했어요. 새로고침 해 주세요.', 'error');
@@ -123,6 +127,16 @@ function subscribe() {
                 renderDetail();
             }
             scheduleRender();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'evaluations' }, p => {
+            if (p.eventType === 'DELETE') allEvals = allEvals.filter(e => e.id !== p.old.id);
+            else {
+                const i = allEvals.findIndex(e => e.id === p.new.id);
+                if (i >= 0) allEvals[i] = p.new; else allEvals.push(p.new);
+            }
+            scheduleRender();
+            if (detailId && detailStage === '6') renderDetail(true);
+            if (!$('eval-modal').hidden) renderEvalTable();
         })
         .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, p => {
             if (!allMessages.some(m => m.id === p.old.id)) return;
@@ -256,7 +270,7 @@ function renderGrid() {
             <div class="tc-progress">${STAGES.map(st => `<i class="${st.no < stage ? 'done' : st.no === stage ? 'now' : ''}" title="${st.name}"></i>`).join('')}</div>
             <div class="tc-stage">${stage ? `${stage}. ${STAGES[stage - 1].name}` : '입장 대기'}</div>
             <div class="tc-flags">${progressFlags(t).map(([n, ok]) => `<span class="${ok ? 'ok' : ''}">${ok ? '✔' : '○'} ${n}</span>`).join('')}</div>
-            <div class="tc-foot"><span>${t.updated_at && new Date(t.updated_at) - new Date(t.created_at) > 1000 ? `${timeAgo(t.updated_at)} 활동` : ''}</span><span>${fb ? `💬 ${fb}` : ''}</span></div>
+            <div class="tc-foot"><span>${t.updated_at && new Date(t.updated_at) - new Date(t.created_at) > 1000 ? `${timeAgo(t.updated_at)} 활동` : ''}</span><span>${selfCount(t.id) ? `📝 평가 ${selfCount(t.id)}명 ` : ''}${fb ? `💬 ${fb}` : ''}</span></div>
         </button>`;
     }).join('');
 }
@@ -365,6 +379,136 @@ function setDetailStage(stage) {
     $('detail-report').scrollTop = 0;
 }
 
+// ==========================================
+// 평가 결과
+// ==========================================
+function selfCount(teamId) {
+    return allEvals.filter(e => e.team_id === teamId && e.kind === 'self').length;
+}
+
+function teamLabelById(id) {
+    const t = teams.find(x => x.id === id);
+    return t ? teamLabel(t) : '(삭제된 모둠)';
+}
+
+const fmtAvg = v => (v === null ? '-' : v.toFixed(2));
+
+// 표에 쓸 행 만들기 (현재 필터의 반만)
+function evalRows(tab) {
+    const ids = new Set(filteredTeams().map(t => t.id));
+    const tm = id => teams.find(x => x.id === id) || {};
+    const list = allEvals.filter(e => ids.has(e.team_id));
+    const base = e => { const t = tm(e.team_id); return [t.grade, t.class_no, t.team_no]; };
+    const sortKey = r => r.slice(0, 4).join('|');
+    if (tab === 'self') {
+        return {
+            header: ['학년', '반', '조', '이름', '역할', ...SELF_ITEMS.map(i => i.short), '평균', '한계점·논리적 비약', '귀납과 연역', '저장 시각'],
+            rows: list.filter(e => e.kind === 'self').map(e => [...base(e), e.evaluator_name, roleName(e.evaluator_role),
+                ...SELF_ITEMS.map(i => e.answers[i.key] || ''), fmtAvg(starAverage(e.answers, SELF_ITEMS)),
+                e.answers.limit || '', e.answers.method || '', new Date(e.updated_at).toLocaleString('ko-KR')]).sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
+        };
+    }
+    if (tab === 'peer') {
+        return {
+            header: ['학년', '반', '조', '평가한 학생', '평가받은 학생', ...PEER_ITEMS.map(i => i.short), '평균', '칭찬 한마디'],
+            rows: list.filter(e => e.kind === 'peer').map(e => [...base(e), e.evaluator_name, e.target,
+                ...PEER_ITEMS.map(i => e.answers[i.key] || ''), fmtAvg(starAverage(e.answers, PEER_ITEMS)), e.answers.praise || ''])
+        };
+    }
+    if (tab === 'team') {
+        return {
+            header: ['학년', '반', '평가한 모둠', '평가한 학생', '평가받은 모둠', '평가받은 모둠 테마', ...TEAM_ITEMS.map(i => i.short), '평균', '질문·조언'],
+            rows: list.filter(e => e.kind === 'team').map(e => {
+                const t = tm(e.team_id), target = tm(e.target);
+                return [t.grade, t.class_no, `${t.team_no}조`, e.evaluator_name, target.team_no ? `${target.team_no}조` : '(삭제됨)',
+                    target.theme_id ? THEMES[target.theme_id].title : '', ...TEAM_ITEMS.map(i => e.answers[i.key] || ''),
+                    fmtAvg(starAverage(e.answers, TEAM_ITEMS)), e.answers.comment || ''];
+            })
+        };
+    }
+    // 학생별 요약: 자기평가 평균, 받은 모둠원 평가 평균, 모둠이 받은 발표 평가 평균
+    const students = new Map();
+    filteredTeams().forEach(t => Object.keys(t.state || {}).filter(k => k.startsWith('member.')).forEach(k =>
+        students.set(`${t.id}|${k.slice(7)}`, { t, name: k.slice(7), role: t.state[k] })));
+    list.filter(e => e.kind === 'self').forEach(e => {
+        const key = `${e.team_id}|${e.evaluator_name}`;
+        if (!students.has(key)) students.set(key, { t: tm(e.team_id), name: e.evaluator_name, role: e.evaluator_role });
+    });
+    const avgOf = arr => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
+    return {
+        header: ['학년', '반', '조', '이름', '역할', '자기평가 평균', '받은 모둠원 평가 평균', '받은 모둠원 평가 수', '모둠이 받은 발표 평가 평균', '받은 칭찬'],
+        rows: [...students.values()].map(st => {
+            const self = list.find(e => e.kind === 'self' && e.team_id === st.t.id && e.evaluator_name === st.name);
+            const peers = list.filter(e => e.kind === 'peer' && e.team_id === st.t.id && e.target === st.name);
+            const peerAvgs = peers.map(e => starAverage(e.answers, PEER_ITEMS)).filter(v => v !== null);
+            const teamAvgs = allEvals.filter(e => e.kind === 'team' && e.target === st.t.id).map(e => starAverage(e.answers, TEAM_ITEMS)).filter(v => v !== null);
+            return [st.t.grade, st.t.class_no, st.t.team_no, st.name, roleName(st.role),
+                self ? fmtAvg(starAverage(self.answers, SELF_ITEMS)) : '미작성', fmtAvg(avgOf(peerAvgs)), peers.length,
+                fmtAvg(avgOf(teamAvgs)), peers.map(e => e.answers.praise).filter(Boolean).join(' / ')];
+        }).sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
+    };
+}
+
+const EVAL_RESULT_TABS = [
+    { id: 'summary', name: '학생별 요약', file: 'summary' },
+    { id: 'self', name: '자기평가', file: 'self' },
+    { id: 'peer', name: '모둠원 평가', file: 'peer' },
+    { id: 'team', name: '다른 모둠 발표 평가', file: 'team' }
+];
+
+function openEvalModal() {
+    const g = $('filter-grade').value, c = $('filter-class').value;
+    $('eval-modal-target').textContent = `대상: ${g ? `${g}학년 ${c ? `${c}반` : '전체 반'}` : '전체 학년'} (위쪽 필터로 범위를 바꿀 수 있어요) · 별점은 1~4점`;
+    renderEvalTable();
+    openModal('eval-modal');
+}
+
+function setEvalResultTab(tab) {
+    evalResultTab = tab;
+    renderEvalTable();
+}
+
+function renderEvalTable() {
+    $('eval-result-tabs').innerHTML = EVAL_RESULT_TABS.map(tab =>
+        `<button class="stage-tab ${tab.id === evalResultTab ? 'active' : ''}" onclick="setEvalResultTab('${tab.id}')">${tab.name}</button>`).join('');
+    const { header, rows } = evalRows(evalResultTab);
+    $('eval-table').innerHTML = `<thead><tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>`
+        + (rows.length ? rows.map(r => `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')
+            : `<tr><td colspan="${header.length}" class="muted">아직 작성된 평가가 없어요.</td></tr>`) + '</tbody>';
+}
+
+function downloadEvalCSV() {
+    const { header, rows } = evalRows(evalResultTab);
+    const g = $('filter-grade').value || 'all', c = $('filter-class').value || 'all';
+    const tab = EVAL_RESULT_TABS.find(x => x.id === evalResultTab);
+    downloadCSV(`evaluation-${tab.file}-${g}-${c}.csv`, header, rows);
+}
+
+// 모둠 상세 > 6. 평가
+function evalDetailHtml(t) {
+    const list = allEvals.filter(e => e.team_id === t.id);
+    const sec = (title, body) => `<section class="rp-sec" data-stage="6"><h3>${title}</h3>${body}</section>`;
+    const selfRows = list.filter(e => e.kind === 'self').map(e => `<tr><td><b>${escapeHtml(e.evaluator_name)}</b><small class="real">${escapeHtml(roleName(e.evaluator_role))}</small></td>
+        ${SELF_ITEMS.map(i => `<td>${starsText(e.answers[i.key])}</td>`).join('')}<td>${fmtAvg(starAverage(e.answers, SELF_ITEMS))}</td></tr>
+        <tr class="sub"><td colspan="${SELF_ITEMS.length + 2}">한계점: ${escapeHtml(e.answers.limit || '-')}<br>귀납과 연역: ${escapeHtml(e.answers.method || '-')}</td></tr>`).join('');
+    const members = [...new Set([...Object.keys(t.state || {}).filter(k => k.startsWith('member.')).map(k => k.slice(7)),
+        ...list.filter(e => e.kind === 'peer').map(e => e.target)])];
+    const peerRows = members.map(name => {
+        const got = list.filter(e => e.kind === 'peer' && e.target === name);
+        const avgs = got.map(e => starAverage(e.answers, PEER_ITEMS)).filter(v => v !== null);
+        return `<tr><td><b>${escapeHtml(name)}</b></td><td>${got.length}</td><td>${fmtAvg(avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null)}</td>
+            <td class="left">${got.filter(e => e.answers.praise).map(e => `“${escapeHtml(e.answers.praise)}” <small class="muted">— ${escapeHtml(e.evaluator_name)}</small>`).join('<br>') || '-'}</td></tr>`;
+    }).join('');
+    const received = allEvals.filter(e => e.kind === 'team' && e.target === t.id);
+    const recvRows = received.map(e => `<tr><td>${escapeHtml(teamLabelById(e.team_id))}<small class="real">${escapeHtml(e.evaluator_name)}</small></td>
+        ${TEAM_ITEMS.map(i => `<td>${starsText(e.answers[i.key])}</td>`).join('')}<td class="left">${escapeHtml(e.answers.comment || '-')}</td></tr>`).join('');
+    return `<div class="report-grid">
+        ${sec('🙋 자기평가', `<div class="table-scroll"><table class="rp-table"><thead><tr><th>이름</th>${SELF_ITEMS.map(i => `<th>${i.short}</th>`).join('')}<th>평균</th></tr></thead><tbody>${selfRows || `<tr><td colspan="${SELF_ITEMS.length + 2}" class="muted">아직 없어요</td></tr>`}</tbody></table></div>`)}
+        ${sec('🤝 모둠원에게 받은 평가', `<table class="rp-table"><thead><tr><th>이름</th><th>받은 수</th><th>평균</th><th>칭찬 한마디</th></tr></thead><tbody>${peerRows || '<tr><td colspan="4" class="muted">아직 없어요</td></tr>'}</tbody></table>`)}
+        ${sec('🎤 다른 모둠에게 받은 발표 평가', `<div class="table-scroll"><table class="rp-table"><thead><tr><th>평가한 모둠·학생</th>${TEAM_ITEMS.map(i => `<th>${i.short}</th>`).join('')}<th>질문·조언</th></tr></thead><tbody>${recvRows || `<tr><td colspan="${TEAM_ITEMS.length + 2}" class="muted">아직 없어요</td></tr>`}</tbody></table></div>`)}
+    </div>`;
+}
+
 function closeDetail() {
     detailId = null;
     $('detail-view').hidden = true;
@@ -428,6 +572,7 @@ function buildReport(t, aiMsgs) {
     // 단계 탭을 고르면 그 단계의 내용만 크게 보여 준다
     const sec = (title, body, cls = '', stage = 0) => (detailStage === 'all' || Number(detailStage) === stage
         ? `<section class="rp-sec ${cls}" data-stage="${stage}"><h3>${title}</h3>${body}</section>` : '');
+    if (detailStage === '6') return evalDetailHtml(t);
     if (detailStage === '5') {
         const chart1Url = s['chart1.type'] ? chartToImage(buildChartConfig(1, s['chart1.type'], th, s)) : '';
         const chart2Url = s['sum.metric'] ? chartToImage(buildChartConfig(2, null, th, s)) : '';
@@ -781,7 +926,8 @@ async function resetTeam() {
 
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-        if (!$('link-modal').hidden) closeModal('link-modal');
+        if (!$('eval-modal').hidden) closeModal('eval-modal');
+        else if (!$('link-modal').hidden) closeModal('link-modal');
         else if (!$('manage-modal').hidden) closeModal('manage-modal');
         else if (!$('broadcast-modal').hidden) closeModal('broadcast-modal');
         else if (detailId) closeDetail();
@@ -789,7 +935,7 @@ document.addEventListener('keydown', e => {
     if (detailId && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
         if (e.key === 'ArrowRight') moveDetail(1);
         if (e.key === 'ArrowLeft') moveDetail(-1);
-        if (/^[0-5]$/.test(e.key)) setDetailStage(e.key === '0' ? 'all' : e.key);
+        if (/^[0-6]$/.test(e.key)) setDetailStage(e.key === '0' ? 'all' : e.key);
     }
 });
 

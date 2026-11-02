@@ -246,6 +246,7 @@ async function enterTeamById(id) {
     setSaveStatus('saved');
     subscribeTeam();
     joinPresence();
+    registerMember();
     await loadMessages();
     openTeamView();
 }
@@ -378,8 +379,23 @@ function saveMember() {
     storageSet('memberRole', role);
     renderMeBadge();
     trackPresence();
+    registerMember();
+    evalLoadedFor = '';
     closeMemberModal();
     refreshAll();
+}
+
+// 모둠원 명단 (모둠원 평가에 씀): 들어온 학생의 이름·역할을 모둠 상태에 남긴다
+function registerMember() {
+    if (teacherMode || !me.name || !team) return;
+    const key = `member.${me.name}`;
+    if (state[key] !== me.role) setState({ [key]: me.role }, true);
+}
+
+function teamMembers() {
+    const list = Object.keys(state).filter(k => k.startsWith('member.')).map(k => ({ name: k.slice(7), role: state[k] }));
+    onlineMembers.forEach(p => { if (p.name && !list.some(m => m.name === p.name)) list.push({ name: p.name, role: p.job }); });
+    return list;
 }
 
 // 이 단계의 제출 버튼을 누를 수 있는지 (담당 역할 + 연구 책임자, 교사 보기 모드는 항상 가능)
@@ -466,7 +482,8 @@ function onTeamRow(row) {
     if (row.stage > team.stage) {
         const prev = Math.max(1, team.stage);
         team.stage = row.stage;
-        if (!teacherMode && team.theme_id && viewStage === prev && viewStage < team.stage) {
+        // 평가(6단계)는 각자 하므로 모둠원을 따라 자동으로 넘어가지 않는다
+        if (!teacherMode && team.theme_id && viewStage === prev && viewStage < team.stage && team.stage <= 5) {
             toast(`모둠원이 '${STAGES[team.stage - 1].name}' 단계로 이동했어요.`);
             goToStage(team.stage);
         } else {
@@ -602,6 +619,7 @@ function refreshAll() {
     refreshExperiment();
     refreshAnalysis();
     if (viewStage === 5) refreshNewspaper();
+    if (viewStage === 6) { loadEvaluations(); renderEvaluation(); }
 }
 
 // ==========================================
@@ -611,7 +629,7 @@ function renderStepper() {
     const nav = $('stepper');
     if (!team || !team.theme_id) { nav.hidden = true; return; }
     nav.hidden = false;
-    const reachedMax = Math.max(1, team.stage);
+    const reachedMax = maxReachableStage();
     nav.innerHTML = STAGES.map(s => {
         const reached = teacherMode || s.no <= reachedMax;
         const cls = [s.no === viewStage ? 'current' : '', s.no < reachedMax ? 'done' : '', reached ? '' : 'locked'].join(' ');
@@ -620,9 +638,15 @@ function renderStepper() {
     }).join('');
 }
 
+// 6단계(평가)는 과학 신문 단계(5)에 들어오면 함께 열린다
+function maxReachableStage() {
+    if (teacherMode) return 6;
+    return team.stage >= 5 ? 6 : Math.max(1, team.stage);
+}
+
 function goToStage(n) {
     if (!team || !team.theme_id) return;
-    n = Math.max(1, Math.min(n, teacherMode ? 5 : Math.max(1, team.stage)));
+    n = Math.max(1, Math.min(n, maxReachableStage()));
     viewStage = n;
     showScreen(STAGES[n - 1].screen);
     refreshAll();
@@ -1384,6 +1408,136 @@ function submitNewspaper() {
     setState({ 'newspaper.submittedAt': new Date().toISOString(), 'newspaper.submittedBy': whoAmI() }, true);
     toast(`🎉 ${teamLabel(team)}의 과학 신문을 선생님께 제출했어요!`, 'success');
 }
+
+// ==========================================
+// 6. 평가 (개인별 · 자동 저장)
+// ==========================================
+let evalTab = 'team';
+let myEvals = {};               // 'kind|target' → 답
+let evalLoadedFor = '';
+let otherTeams = [];
+let evalPanelSig = '';
+const evalSaveTimers = {};
+const EVAL_HINTS = {
+    team: '다른 모둠이 발표할 때, 그 모둠의 탐구를 별점과 질문·조언으로 평가해 보자.',
+    self: '이번 탐구에서 나는 어땠는지 솔직하게 돌아보자.',
+    peer: '같은 모둠 친구들이 탐구에 어떻게 참여했는지 평가해 보자.'
+};
+
+async function loadEvaluations() {
+    if (!team) return;
+    const key = `${team.id}|${me.name}|${teacherMode}`;
+    if (evalLoadedFor === key) return;
+    evalLoadedFor = key;
+    const [mine, all] = await Promise.all([
+        teacherMode ? Promise.resolve({ data: [] }) : sb.rpc('my_evaluations', { p_team_id: team.id, p_name: me.name }),
+        sb.from('teams').select('id, grade, class_no, team_no, theme_id').eq('teacher_id', team.teacher_id)
+    ]);
+    myEvals = {};
+    (mine.data || []).forEach(r => { myEvals[`${r.kind}|${r.target}`] = r.answers || {}; });
+    otherTeams = (all.data || [])
+        .filter(t => t.id !== team.id && t.grade === team.grade && t.class_no === team.class_no)
+        .sort((a, b) => a.team_no - b.team_no);
+    evalPanelSig = '';
+    renderEvaluation();
+}
+
+function setEvalTab(tab) {
+    evalTab = tab;
+    evalPanelSig = '';
+    renderEvaluation();
+}
+
+function starRow(kind, target, item, extra = '') {
+    const v = Number((myEvals[`${kind}|${target}`] || {})[item.key]) || 0;
+    return `<div class="star-row" data-kind="${kind}" data-target="${escapeHtml(target)}" data-item="${item.key}">
+        <span class="star-q">${escapeHtml(item.text)}${extra}</span>
+        <span class="stars">${[1, 2, 3, 4].map(n => `<button type="button" class="star-btn ${n <= v ? 'on' : ''}" data-value="${n}" aria-label="별 ${n}개">★</button>`).join('')}</span>
+        <span class="star-label">${v ? EVAL_SCALE[v - 1] : '아직 안 골랐어요'}</span></div>`;
+}
+
+function textRow(kind, target, t) {
+    const v = (myEvals[`${kind}|${target}`] || {})[t.key] || '';
+    return `<label class="field eval-field"><span>${escapeHtml(t.q)}</span>
+        <textarea class="eval-text" rows="2" data-kind="${kind}" data-target="${escapeHtml(target)}" data-item="${t.key}" placeholder="${escapeHtml(t.example)}">${escapeHtml(v)}</textarea></label>`;
+}
+
+function evalCard(title, kind, target, items, texts, sub = '') {
+    return `<div class="eval-card"><div class="eval-card-head"><b>${title}</b>${sub ? `<span class="muted">${sub}</span>` : ''}</div>
+        ${items.map(it => starRow(kind, target, it, it.std ? ` <small class="eval-std">${it.std}</small>` : '')).join('')}
+        ${texts.map(t => textRow(kind, target, t)).join('')}</div>`;
+}
+
+function renderEvaluation() {
+    if (!team || viewStage !== 6) return;
+    $('eval-teacher-note').hidden = !teacherMode;
+    $('eval-tabs').hidden = teacherMode;
+    $('eval-panel').hidden = teacherMode;
+    $('eval-tab-hint').hidden = teacherMode;
+    if (teacherMode) return;
+    document.querySelectorAll('.eval-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === evalTab));
+    $('eval-tab-hint').textContent = EVAL_HINTS[evalTab];
+    const peers = teamMembers().filter(m => m.name !== me.name);
+    const sig = JSON.stringify([evalTab, peers, otherTeams.map(t => t.id), team.id, me.name, Object.keys(myEvals).length]);
+    if (sig === evalPanelSig) return;
+    if ($('eval-panel').contains(document.activeElement)) return;     // 쓰는 중에는 다시 그리지 않음
+    evalPanelSig = sig;
+    let html;
+    if (evalTab === 'team') {
+        html = otherTeams.length
+            ? otherTeams.map(t => evalCard(`${t.team_no}조`, 'team', t.id, TEAM_ITEMS, [TEAM_TEXT],
+                t.theme_id ? `${THEMES[t.theme_id].icon} ${THEMES[t.theme_id].title}` : '')).join('')
+            : '<p class="hint center">같은 반의 다른 모둠이 없어요.</p>';
+    } else if (evalTab === 'self') {
+        html = evalCard(`🙋 ${escapeHtml(me.name)}의 탐구 돌아보기`, 'self', '', SELF_ITEMS, SELF_TEXTS, roleName(me.role));
+    } else {
+        html = peers.length
+            ? peers.map(p => evalCard(escapeHtml(p.name), 'peer', p.name, PEER_ITEMS, [PEER_TEXT], roleName(p.role))).join('')
+            : '<p class="hint center">아직 다른 모둠원이 없어요. 모둠원이 입장하면 여기에 나타나요.</p>';
+    }
+    $('eval-panel').innerHTML = html;
+}
+
+function setEval(kind, target, key, value) {
+    const k = `${kind}|${target}`;
+    myEvals[k] = { ...(myEvals[k] || {}), [key]: value };
+    clearTimeout(evalSaveTimers[k]);
+    evalSaveTimers[k] = setTimeout(() => saveEval(kind, target), 600);
+    setEvalStatus('saving');
+}
+
+async function saveEval(kind, target, attempt = 0) {
+    const { data, error } = await sb.rpc('save_evaluation', {
+        p_team_id: team.id, p_name: me.name, p_role: me.role, p_kind: kind, p_target: target, p_answers: myEvals[`${kind}|${target}`]
+    });
+    if (error || data === false) {
+        console.error('평가 저장 오류:', error);
+        setEvalStatus('error');
+        if (attempt < 5) setTimeout(() => saveEval(kind, target, attempt + 1), 3000);
+        return;
+    }
+    setEvalStatus('saved');
+}
+
+function setEvalStatus(st) {
+    const el = $('eval-status');
+    el.textContent = { saving: '저장 중…', saved: '✔ 저장됨', error: '⚠ 저장 실패 · 재시도 중' }[st];
+    el.className = `pill ${st === 'saved' ? 'pill-saved' : st === 'error' ? 'pill-error' : 'pill-saving'}`;
+}
+
+document.addEventListener('click', e => {
+    const btn = e.target.closest('#eval-panel .star-btn');
+    if (!btn) return;
+    const row = btn.closest('.star-row');
+    const v = Number(btn.dataset.value);
+    setEval(row.dataset.kind, row.dataset.target, row.dataset.item, v);
+    row.querySelectorAll('.star-btn').forEach(b => b.classList.toggle('on', Number(b.dataset.value) <= v));
+    row.querySelector('.star-label').textContent = EVAL_SCALE[v - 1];
+});
+document.addEventListener('input', e => {
+    const el = e.target.closest('#eval-panel .eval-text');
+    if (el) setEval(el.dataset.kind, el.dataset.target, el.dataset.item, el.value);
+});
 
 // ==========================================
 // 시작

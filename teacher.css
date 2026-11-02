@@ -40,7 +40,7 @@ body.no-scroll { overflow: hidden; }
 .tc-online { font-size: 12px; color: #b0b8c1; font-weight: 700; }
 .tc-online.on { color: var(--green); }
 .tc-theme { font-size: 14px; font-weight: 700; }
-.tc-progress { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.tc-progress { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .tc-progress i { height: 7px; border-radius: 4px; background: #e2e8f0; }
 .tc-progress i.done { background: var(--green); }
 .tc-progress i.now { background: var(--blue); }
@@ -169,3 +169,12 @@ body.no-scroll { overflow: hidden; }
 .detail-view.big .rp-newspaper .np-story, .detail-view.big .rp-newspaper .np-quote, .detail-view.big .rp-newspaper .np-a { font-size: 17px; }
 .detail-view.big .rp-newspaper .np-head { font-size: 23px; }
 .detail-view.big .rp-newspaper .np-title { font-size: 54px; }
+
+/* 평가 결과 */
+.eval-modal-content { max-width: 1100px; }
+.eval-result-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.eval-result-actions { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.eval-table td, .eval-table th { font-size: 13px; white-space: nowrap; }
+.eval-table td:last-child { white-space: normal; min-width: 160px; }
+.rp-table tr.sub td { text-align: left; font-size: 12px; color: #555; background: #fafafa; }
+.rp-table td.left { text-align: left; }

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>교사용 대시보드 - 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261031a">
-    <link rel="stylesheet" href="newspaper.css?v=20261031a">
-    <link rel="stylesheet" href="teacher.css?v=20261031a">
+    <link rel="stylesheet" href="style.css?v=20261102a">
+    <link rel="stylesheet" href="newspaper.css?v=20261102a">
+    <link rel="stylesheet" href="teacher.css?v=20261102a">
 </head>
 <body class="teacher">
 
@@ -34,6 +34,7 @@
         <div class="dash-filters">
             <select id="filter-grade" onchange="onFilterChange()"></select>
             <select id="filter-class" onchange="onFilterChange()"></select>
+            <button class="btn btn-small btn-ghost" onclick="openEvalModal()">📋 평가 결과</button>
             <button class="btn btn-small btn-ghost" onclick="openModal('broadcast-modal')">📢 전체 공지</button>
             <button class="btn btn-small btn-ghost" onclick="openManage()">⚙️ 모둠 관리</button>
             <button class="link-btn" onclick="logout()">로그아웃</button>
@@ -124,6 +125,18 @@
     </div>
 </div>
 
+<!-- 평가 결과 -->
+<div id="eval-modal" class="modal" hidden>
+    <div class="modal-content eval-modal-content">
+        <button class="icon-btn modal-close" onclick="closeModal('eval-modal')" aria-label="닫기">✕</button>
+        <h2>📋 평가 결과</h2>
+        <p class="hint" id="eval-modal-target"></p>
+        <div class="eval-result-tabs" id="eval-result-tabs"></div>
+        <div class="eval-result-actions"><button class="btn btn-small btn-primary" onclick="downloadEvalCSV()">⬇️ 엑셀(CSV)로 내려받기</button></div>
+        <div class="table-scroll"><table class="rp-table eval-table" id="eval-table"></table></div>
+    </div>
+</div>
+
 <!-- 전체 공지 -->
 <div id="broadcast-modal" class="modal" hidden>
     <div class="modal-content">
@@ -140,9 +153,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="config.js?v=20261031a"></script>
-<script src="themes.js?v=20261031a"></script>
-<script src="common.js?v=20261031a"></script>
-<script src="teacher.js?v=20261031a"></script>
+<script src="config.js?v=20261102a"></script>
+<script src="themes.js?v=20261102a"></script>
+<script src="common.js?v=20261102a"></script>
+<script src="teacher.js?v=20261102a"></script>
 </body>
 </html>

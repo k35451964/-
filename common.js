@@ -13,7 +13,8 @@ const STAGES = [
     { no: 2, name: '탐구 설계', screen: 'hypothesis-screen' },
     { no: 3, name: '실험·데이터', screen: 'simulation-screen' },
     { no: 4, name: '분석·검증', screen: 'analysis-screen' },
-    { no: 5, name: '과학 신문', screen: 'newspaper-screen' }
+    { no: 5, name: '과학 신문', screen: 'newspaper-screen' },
+    { no: 6, name: '평가', screen: 'evaluation-screen' }
 ];
 
 // 모둠 역할 (지도안 기준). 각 단계의 제출 버튼은 담당 역할과 연구 책임자만 누를 수 있다.
@@ -700,4 +701,63 @@ function buildNewspaperHtml({ team, theme, state, chart1Url, chart2Url, editable
             ${interview}
         </section>
     </article>`;
+}
+
+// ==========================================
+// 자기평가 · 동료평가 (별 4개)
+// ==========================================
+const EVAL_SCALE = ['노력이 필요해요', '보통이에요', '잘했어요', '매우 잘했어요'];
+
+const SELF_ITEMS = [
+    { key: 'q1', short: '탐구 문제', text: '스토리 속 관찰 사례에서 규칙을 찾아 탐구 문제를 정할 수 있었다.', std: '02-01 귀납' },
+    { key: 'q2', short: '가설·예측', text: '조작 변인·통제 변인·종속 변인을 구분해 가설과 예측을 세울 수 있었다.', std: '02-02 연역' },
+    { key: 'q3', short: '변인 통제', text: '대조군과 실험군을 정하고 변인을 통제한 실험을 설계할 수 있었다.', std: '02-02' },
+    { key: 'q4', short: '그래프 표상', text: '데이터의 성격에 맞는 그래프를 고르고 그 이유를 설명할 수 있었다.', std: '02-03 표상' },
+    { key: 'q5', short: '가설 검증', text: '예측과 실제 결과를 비교해 데이터를 근거로 가설을 검증할 수 있었다.', std: '02-04' },
+    { key: 'q6', short: '역할·협력', text: '맡은 역할을 책임감 있게 수행하고 모둠원과 협력했다.', std: '02-04 협력' }
+];
+const SELF_TEXTS = [
+    { key: 'limit', q: '토의를 통해 새로 발견한 우리 탐구 설계의 한계점이나 논리적 비약은?',
+        example: '예: (식물 실험이라면) 화분을 한 개씩만 키워서 우연히 생긴 차이일 수도 있다는 점을 발견했다.' },
+    { key: 'method', q: '이번 탐구에서 귀납과 연역은 각각 어느 단계에서 나타났나요?',
+        example: '예: 귀납은 ○○ 단계에서, 연역은 ○○ 단계에서 나타났다. 왜냐하면 ...' }
+];
+const PEER_ITEMS = [
+    { key: 'role', short: '역할 수행', text: '맡은 역할을 책임감 있게 수행했다.' },
+    { key: 'talk', short: '토의 참여', text: '토의에 적극적으로 참여했다.' },
+    { key: 'idea', short: '의견 기여', text: '좋은 의견이나 아이디어를 냈다.' }
+];
+const PEER_TEXT = { key: 'praise', q: '칭찬 한마디', example: '예: 측정할 때 값을 꼼꼼하게 다시 확인해 줘서 고마웠어!' };
+const TEAM_ITEMS = [
+    { key: 'control', short: '변인 통제', text: '변인 통제가 타당했다.' },
+    { key: 'graph', short: '그래프', text: '그래프가 결론을 잘 뒷받침했다.' },
+    { key: 'evidence', short: '데이터 근거', text: '결론이 데이터에 근거했다.' }
+];
+const TEAM_TEXT = { key: 'comment', q: '질문이나 조언 한 줄', example: '예: 실제 실험이었다면 ○○ 때문에 오차가 생기지 않았을까요?' };
+
+function starAverage(answers, items) {
+    const vals = items.map(it => Number(answers && answers[it.key])).filter(v => v >= 1 && v <= 4);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
+function starsText(v) {
+    const n = Number(v);
+    return n >= 1 && n <= 4 ? '★'.repeat(n) + '☆'.repeat(4 - n) : '-';
+}
+
+// 엑셀에서 한글이 깨지지 않는 CSV (UTF-8 BOM)
+function downloadCSV(filename, header, rows) {
+    const esc = v => {
+        const t = v === null || v === undefined ? '' : String(v);
+        return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+    };
+    const csv = '﻿' + [header, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
