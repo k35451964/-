@@ -14,6 +14,8 @@ let viewStage = 0;          // 이 기기가 보고 있는 단계
 let me = { name: '', role: '' };     // 이 기기를 쓰는 학생의 이름·역할
 let teacherMode = false;    // 교사 보기 모드 (모든 단계 자유 이동, 역할 제한 없음)
 let onlineMembers = [];
+let editingKey = null;      // 이 기기에서 지금 입력 중인 칸
+let editors = {};           // 다른 모둠원이 입력 중인 칸: data-key → [이름]
 
 const pending = {};         // 아직 서버에 보내지 않은 변경
 const inflight = {};        // 서버로 보냈지만 아직 실시간 확인(echo)이 오지 않은 값 (내 입력이 옛 값으로 되돌려지지 않게)
@@ -321,6 +323,14 @@ function joinPresence() {
                 .filter(p => p && p.role === 'student');
             $('online-badge').textContent = `👥 ${onlineMembers.length}명 접속 중`;
             if (!$('members-pop').hidden) renderMembers();
+            // 다른 기기에서 입력 중인 칸 모으기 (내 기기는 제외)
+            editors = {};
+            Object.entries(st).forEach(([deviceKey, list]) => {
+                if (deviceKey === DEVICE_ID) return;
+                const p = list.find(x => x.team_id === team.id);
+                if (p && p.editing) (editors[p.editing] = editors[p.editing] || []).push(p.name || '모둠원');
+            });
+            renderEditingTags();
         })
         .subscribe(async status => {
             if (status === 'SUBSCRIBED' && team) await trackPresence();
@@ -333,9 +343,61 @@ function trackPresence() {
         team_id: team.id,
         role: teacherMode ? 'teacher' : 'student',
         name: me.name,
-        job: me.role
+        job: me.role,
+        editing: editingKey
     });
 }
+
+// ---------- 누가 어느 칸을 입력 중인지 (구글 스프레드시트처럼) ----------
+function currentEditingKey() {
+    const a = document.activeElement;
+    const el = a && a.closest ? a.closest('[data-key]') : null;
+    return el ? el.dataset.key : null;
+}
+document.addEventListener('focusin', () => {
+    const key = currentEditingKey();
+    if (key !== editingKey) { editingKey = key; trackPresence(); }
+});
+document.addEventListener('focusout', () => {
+    setTimeout(() => {
+        const key = currentEditingKey();
+        if (key !== editingKey) { editingKey = key; trackPresence(); }
+    }, 60);
+});
+
+function colorForName(name) {
+    return `hsl(${hashString(name || '?') % 360}, 62%, 42%)`;
+}
+
+function renderEditingTags() {
+    const layer = $('editing-layer');
+    if (!layer) return;
+    layer.innerHTML = '';
+    document.querySelectorAll('.being-edited').forEach(el => {
+        el.classList.remove('being-edited');
+        el.style.removeProperty('--edit-color');
+    });
+    if (!team) return;
+    Object.entries(editors).forEach(([key, names]) => {
+        const els = [...document.querySelectorAll('[data-key]')].filter(el => el.dataset.key === key);
+        // 보이는 입력칸을 찾고, 라디오 버튼처럼 숨은 입력은 감싸는 상자에 표시한다
+        let target = els.find(el => el.type !== 'radio' && el.offsetParent !== null);
+        if (!target && els[0]) target = els[0].closest('.var-mode, .dir-choices, .metric-group, .panel-picker, .val-buttons');
+        if (!target || target.offsetParent === null) return;
+        const color = colorForName(names[0]);
+        target.classList.add('being-edited');
+        target.style.setProperty('--edit-color', color);
+        const r = target.getBoundingClientRect();
+        const tag = document.createElement('div');
+        tag.className = 'editing-tag';
+        tag.textContent = `✏️ ${names.join(', ')} 작성 중`;
+        tag.style.background = color;
+        tag.style.left = `${Math.max(4, r.left + window.scrollX)}px`;
+        tag.style.top = `${r.top + window.scrollY - 21}px`;
+        layer.appendChild(tag);
+    });
+}
+window.addEventListener('resize', () => renderEditingTags());
 
 // ---------- 모둠원 이름·역할 ----------
 function renderMeBadge() {
@@ -620,6 +682,7 @@ function refreshAll() {
     refreshAnalysis();
     if (viewStage === 5) refreshNewspaper();
     if (viewStage === 6) { loadEvaluations(); renderEvaluation(); }
+    renderEditingTags();
 }
 
 // ==========================================
@@ -1024,8 +1087,13 @@ function renderDevice() {
         btn.disabled = true;
         btn.textContent = '🔒 설계를 전송해야 측정할 수 있어요';
     } else if (step >= 5) {
-        btn.disabled = true;
-        btn.textContent = `✅ ${target === 'ctrl' ? '대조군' : '실험군'} 측정 완료`;
+        // 한쪽 집단을 다 쟀으면, 아직 남은 다른 집단을 재러 가는 버튼으로 바꾼다
+        const other = target === 'ctrl' ? 'exp' : 'ctrl';
+        const otherLeft = (state[`sim.${other}`] || 0) < 5;
+        btn.disabled = !otherLeft;
+        btn.textContent = otherLeft
+            ? `👉 ${groupLabel(th, state, other)} 측정하러 가기`
+            : '✅ 대조군·실험군 측정 완료';
     } else {
         btn.disabled = false;
         btn.textContent = step === 0 ? txt.btn : txt.nextBtn;
@@ -1049,7 +1117,14 @@ function measureData() {
     if (!canMeasure() || activeBusy()) return;
     const target = measureTarget;
     const step = state[`sim.${target}`] || 0;
-    if (step >= 5) return;
+    if (step >= 5) {
+        const other = target === 'ctrl' ? 'exp' : 'ctrl';
+        if ((state[`sim.${other}`] || 0) < 5) {
+            document.querySelector(`input[name="measure-target"][value="${other}"]`).checked = true;
+            setMeasureTarget(other);
+        }
+        return;
+    }
     memIndex = null;
     const id = Math.random().toString(36).slice(2, 10);
     busySeenAt[id] = Date.now();
@@ -1080,6 +1155,7 @@ function chooseChart(kind, type) {
 }
 
 function destroyChart(key) {
+    delete chartSigs[key];
     if (charts[key]) {
         charts[key].destroy();
         delete charts[key];
@@ -1091,15 +1167,20 @@ function destroyAllCharts() {
     Object.keys(newsImageCache).forEach(k => delete newsImageCache[k]);
 }
 
-// key: 그래프 인스턴스 이름, kind: 1(로우) / 2(가공)
+// key: 그래프 인스턴스 이름, kind: 1(측정 데이터) / 2(가공 데이터)
+const chartSigs = {};
 function drawChartInto(key, kind, canvasId) {
     const type = kind === 1 ? state['chart1.type'] : null;
     const cfg = buildChartConfig(kind, type, theme(), state);
+    // 그래프 내용이 바뀌었을 때만 다시 그린다 (다른 칸을 입력할 때 그래프가 깜빡이지 않게)
+    const sig = JSON.stringify([cfg.type, cfg.data, cfg.options && cfg.options.scales, cfg.options && cfg.options.plugins && cfg.options.plugins.title]);
     const existing = charts[key];
-    if (existing && existing.config.type === cfg.type) {
+    if (existing && chartSigs[key] === sig && existing.canvas === $(canvasId)) return;
+    chartSigs[key] = sig;
+    if (existing && existing.config.type === cfg.type && existing.canvas === $(canvasId)) {
         existing.data = cfg.data;
         existing.options = cfg.options;
-        existing.update();
+        existing.update('none');        // 값만 바뀌면 애니메이션 없이 바로 반영
     } else {
         destroyChart(key);
         charts[key] = new Chart($(canvasId), cfg);
@@ -1529,17 +1610,29 @@ async function saveEval(kind, target, attempt = 0) {
     });
     if (error || data === false) {
         console.error('평가 저장 오류:', error);
-        setEvalStatus('error');
+        // DB에 평가 저장 기능이 아직 없는 경우 (setup.sql을 다시 실행하지 않음) → 재시도해도 소용없음
+        const missing = error && (error.code === 'PGRST202' || error.code === '42P01' || /function|does not exist|schema cache/i.test(error.message || ''));
+        if (missing) {
+            setEvalStatus('setup');
+            return;
+        }
+        setEvalStatus('error', error && error.message);
         if (attempt < 5) setTimeout(() => saveEval(kind, target, attempt + 1), 3000);
         return;
     }
     setEvalStatus('saved');
 }
 
-function setEvalStatus(st) {
+function setEvalStatus(st, detail) {
     const el = $('eval-status');
-    el.textContent = { saving: '저장 중…', saved: '✔ 저장됨', error: '⚠ 저장 실패 · 재시도 중' }[st];
-    el.className = `pill ${st === 'saved' ? 'pill-saved' : st === 'error' ? 'pill-error' : 'pill-saving'}`;
+    el.textContent = {
+        saving: '저장 중…',
+        saved: '✔ 저장됨',
+        error: '⚠ 저장 실패 · 재시도 중',
+        setup: '⚠ 평가 저장 기능이 아직 준비되지 않았어요 (선생님께 알려 주세요)'
+    }[st];
+    el.title = detail || (st === 'setup' ? '교사: Supabase에서 supabase/setup.sql을 다시 실행해 주세요.' : '');
+    el.className = `pill ${st === 'saved' ? 'pill-saved' : st === 'error' || st === 'setup' ? 'pill-error' : 'pill-saving'}`;
 }
 
 document.addEventListener('click', e => {

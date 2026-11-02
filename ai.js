@@ -62,7 +62,7 @@ function metricAnswerLines(m, ctx) {
     const unit = metricUnit(m, th);
     const fmt = x => (x === null || x === undefined ? '계산 불가(빈칸 확인)' : `${fmtNum(x, d)}${unit === '%' ? '%' : ` ${unit}`}`);
     const result = m.compute(ctx.ctrl, ctx.exp, th);
-    const rowName = r => (r === 'c' ? ctx.ctrlLabel || '대조군' : r === 'e' ? ctx.expLabel || '실험군' : r === 'd' ? '차이(실험군 − 대조군)' : m.name);
+    const rowName = r => (r === 'c' ? ctx.ctrlLabel || '대조군' : r === 'e' ? ctx.expLabel || '실험군' : r === 'd' ? '두 집단의 차이(큰 값 − 작은 값)' : m.name);
     const lines = [`📐 ${m.name}`, `  계산 방법: ${m.desc}`];
     metricRows(m).forEach(r => {
         const vals = result[r] || [];
@@ -173,7 +173,7 @@ function ruleBasedAnswer(question, ctx) {
             } else {
                 lines.push(`• ${label(4)} ${groups[0].name}: ${f(c)} ${u}`);
                 lines.push(`• ${label(4)} ${groups[1].name}: ${f(e)} ${u}`);
-                lines.push(`• 차이(${groups[0].name} − ${groups[1].name}): ${f(c - e)} ${u}`);
+                lines.push(`• 두 값의 차이: ${f(Math.abs(c - e))} ${u}${c === e ? '' : ` (${c > e ? groups[0].name : groups[1].name}이(가) 더 큼)`}`);
             }
         }
         if (intent === 'mean') {

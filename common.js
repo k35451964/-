@@ -249,7 +249,7 @@ function lastAIAnswer(messages) {
 }
 
 // ---------- 그래프 ----------
-// kind 1: 시간에 따른 로우 데이터 / kind 2: 가공 데이터(대조군 vs 실험군 2개 값)
+// kind 1: 시간에 따라 측정한 데이터 / kind 2: 가공 데이터
 function buildChartConfig(kind, type, theme, state) {
     const m = theme.measure;
     const yTitle = `${m.name} (${m.unit})`;
@@ -400,9 +400,9 @@ const METRICS = [
         compute: (c, e) => ({ c: [statOf.ratio(c[4], c[0]) === null ? null : statOf.ratio(c[4], c[0]) * 100], e: [statOf.ratio(e[4], e[0]) === null ? null : statOf.ratio(e[4], e[0]) * 100] }) },
     { id: 'fold', group: 'pair', name: '증식 배수', desc: '마지막 콜로니 수 ÷ 처음 콜로니 수 (몇 배로 늘었나)', themes: ['penicillin'], unit: '배', decimals: 1,
         prompt: '각 집단의 증식 배수(마지막 ÷ 처음)를 구해 줘.', compute: (c, e) => ({ c: [statOf.ratio(c[4], c[0])], e: [statOf.ratio(e[4], e[0])] }) },
-    { id: 'diffSeries', group: 'series', name: '시점별 두 집단의 차이', desc: '측정 시점마다 (실험군 − 대조군) — 차이가 언제 커지고 작아지나', rows: ['d'], cols: 5,
-        prompt: '각 측정 시점마다 두 집단의 차이(실험군 − 대조군)를 구해 줘.',
-        compute: (c, e) => ({ d: c.map((x, i) => (x === null || e[i] === null ? null : e[i] - x)) }) },
+    { id: 'diffSeries', group: 'series', name: '시점별 두 집단의 차이', desc: '측정 시점마다 두 값의 차이(큰 값 − 작은 값) — 차이가 언제 커지고 작아지나', rows: ['d'], cols: 5,
+        prompt: '각 측정 시점마다 두 집단의 차이(큰 값 − 작은 값)를 구해 줘.',
+        compute: (c, e) => ({ d: c.map((x, i) => (x === null || e[i] === null ? null : Math.abs(e[i] - x))) }) },
     { id: 'rateSeries', group: 'series', name: '시점별 처음 대비 변화율(%)', desc: '각 시점의 (값 − 처음 값) ÷ 처음 값 × 100 — 처음 값을 0%로 맞춰 변화 추이를 비교', cols: 5, unit: '%', decimals: 1, exclude: ['vaccine'],
         prompt: '각 측정 시점의 처음 대비 변화율(%)을 집단별로 구해 줘.',
         compute: (c, e) => {
@@ -477,7 +477,7 @@ function metricDecimals(m, theme) {
 function metricRowLabel(m, theme, state, row) {
     if (row === 'c') return groupLabel(theme, state, 'ctrl');
     if (row === 'e') return groupLabel(theme, state, 'exp');
-    if (row === 'd') return '차이 (실험군 − 대조군)';
+    if (row === 'd') return '두 집단의 차이 (큰 값 − 작은 값)';
     return m.name;
 }
 
@@ -536,7 +536,7 @@ function buildSummaryChart(theme, state, common) {
     }
     if (group.chart === 'line') {
         const datasets = m.id === 'diffSeries'
-            ? [{ label: '차이 (실험군 − 대조군)', data: v.d, borderColor: '#8e44ad', backgroundColor: '#8e44ad', borderWidth: 2, tension: 0.3, spanGaps: true }]
+            ? [{ label: '두 집단의 차이 (큰 값 − 작은 값)', data: v.d, borderColor: '#8e44ad', backgroundColor: '#8e44ad', borderWidth: 2, tension: 0.3, spanGaps: true }]
             : [{ label: cl, data: v.c, borderColor: COLOR_CTRL, backgroundColor: COLOR_CTRL, borderWidth: 2, tension: 0.3, spanGaps: true },
                { label: el, data: v.e, borderColor: COLOR_EXP, backgroundColor: COLOR_EXP, borderWidth: 2, tension: 0.3, spanGaps: true }];
         return {

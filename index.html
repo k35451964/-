@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웹 기반 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261102b">
-    <link rel="stylesheet" href="newspaper.css?v=20261102b">
-    <link rel="stylesheet" href="devices.css?v=20261102b">
-    <link rel="stylesheet" href="scenes.css?v=20261102b">
+    <link rel="stylesheet" href="style.css?v=20261103a">
+    <link rel="stylesheet" href="newspaper.css?v=20261103a">
+    <link rel="stylesheet" href="devices.css?v=20261103a">
+    <link rel="stylesheet" href="scenes.css?v=20261103a">
 </head>
 <body>
 
@@ -217,7 +217,7 @@
         </div>
 
         <div id="chart1-section" class="chart-section">
-            <h3 class="section-title">1차 시각화: 로우 데이터 (전체 흐름 파악)</h3>
+            <h3 class="section-title">1차 시각화: 측정 데이터 (전체 흐름 파악)</h3>
             <p class="hint">시간에 따른 전체 데이터의 변화를 가장 잘 보여 주는 그래프를 골라 보자.</p>
             <div class="chart-type-container described" data-kind="1">
                 <button class="chart-btn" data-type="line" onclick="chooseChart(1, 'line')"><span class="chart-name">📈 선 그래프</span><span class="chart-desc">시간 또는 순서에 따른 데이터의 변화를 추적할 때 사용한다.</span></button>
@@ -254,7 +254,7 @@
         <!-- AI 데이터 분석 어시스턴트 -->
         <div id="ai-section" class="ai-section">
             <h3>🤖 AI 데이터 분석 어시스턴트</h3>
-            <p class="hint">로우 데이터에서 핵심 결론을 끌어내기 위해 데이터를 가공해 보자. AI에게 계산을 부탁할 수 있다.</p>
+            <p class="hint">측정한 데이터에서 핵심 결론을 끌어내기 위해 데이터를 가공해 보자. AI에게 계산을 부탁할 수 있다.</p>
             <div class="ai-prompts" id="ai-prompts"></div>
             <div id="ai-chat-box" class="chat-box"></div>
             <p class="hint ai-custom-hint">💡 직접 질문해서 구한 값이 아래 목록에 없으면, 2차 시각화에서 <b>✏️ 직접 정한 가공 데이터</b>를 골라 그래프를 그릴 수 있어요.</p>
@@ -392,7 +392,7 @@
     <div class="tada-content">
         <div class="tada-emoji">🎉</div>
         <h1>위대한 데이터 분석을 마친 과학자 탄생!</h1>
-        <p>복잡한 로우 데이터 속에서 핵심 결론을 성공적으로 도출해 냈다.</p>
+        <p>복잡한 측정 데이터 속에서 핵심 결론을 성공적으로 도출해 냈다.</p>
         <button class="btn btn-primary" onclick="closeTada()">📰 과학 신문 발행하러 가기</button>
     </div>
 </div>
@@ -410,15 +410,16 @@
 </aside>
 
 <div id="toast-area" class="toast-area"></div>
+<div id="editing-layer" class="editing-layer"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="config.js?v=20261102b"></script>
-<script src="themes.js?v=20261102b"></script>
-<script src="common.js?v=20261102b"></script>
-<script src="devices.js?v=20261102b"></script>
-<script src="scenes.js?v=20261102b"></script>
-<script src="ai.js?v=20261102b"></script>
-<script src="app.js?v=20261102b"></script>
+<script src="config.js?v=20261103a"></script>
+<script src="themes.js?v=20261103a"></script>
+<script src="common.js?v=20261103a"></script>
+<script src="devices.js?v=20261103a"></script>
+<script src="scenes.js?v=20261103a"></script>
+<script src="ai.js?v=20261103a"></script>
+<script src="app.js?v=20261103a"></script>
 </body>
 </html>
