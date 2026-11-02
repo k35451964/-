@@ -77,8 +77,9 @@
 ### 예전 버전에서 업그레이드할 때
 SQL Editor에서 `delete from public.teams;`를 실행한 뒤(기존 모둠 삭제), `supabase/setup.sql` 전체를 다시 실행합니다(맨 아래 이메일은 본인 이메일로).
 
-### 4. 컷 만화 이미지 넣기 (선택)
-`themes.js`에서 테마의 `image: null`을 `image: 'images/cola.png'`처럼 바꾸면 4컷 대신 이미지가 표시됩니다.
+### 4. 스토리 만화
+`images/테마-번호.webp`(예: `cola-1.webp`)가 각 컷 그림이고, `themes.js`의 `comic` 목록에 그림 경로와 컷 설명(신문 1면 캡션)이 있습니다.
+만화를 바꿀 때는 새 만화 한 장을 주면 컷 단위로 잘라 넣을 수 있습니다.
 
 ## 배포
 > 파일을 고치면 `index.html`, `teacher.html`의 `?v=` 뒤 버전 문자를 바꿔야 브라우저가 옛 파일을 쓰지 않습니다.

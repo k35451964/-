@@ -135,7 +135,7 @@ const SCENES = {
         return svgWrap(`${bg}${beaker}${thermo}${towel}${piecesGroup}${tweezers}${sceneTag(`⏱ 담근 지 ${v.label}`)}`);
     },
 
-    // ---------- 3. 자연선택 (쥐와 매) ----------
+    // ---------- 3. 자연선택 (쥐와 독수리) ----------
     drone(v) {
         const [fur, ground, hawks, bush] = v.cond;
         const groundColor = ground === 0 ? '#3d3d43' : '#e0c88f';
@@ -164,7 +164,7 @@ const SCENES = {
         const bg = `<rect width="320" height="120" fill="#cfe3f3"/>
             <path d="M 210 120 L 250 60 L 262 64 L 300 120 Z" fill="#7b6a63"/><path d="M 250 60 l 6 -10 l 6 14 z" fill="#c0392b" opacity="0.7"/>
             <rect y="118" width="320" height="72" fill="${groundColor}"/>`;
-        return svgWrap(`${bg}${bushes}${mice}<g class="hawks">${hawkSvg}</g>${drone}${sceneTag(`🦅 매 ${hawkCount}마리 · ${v.label}`)}`);
+        return svgWrap(`${bg}${bushes}${mice}<g class="hawks">${hawkSvg}</g>${drone}${sceneTag(`🦅 독수리 ${hawkCount}마리 · ${v.label}`)}`);
     },
 
     // ---------- 4. 백신과 항체 ----------

@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웹 기반 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261102a">
-    <link rel="stylesheet" href="newspaper.css?v=20261102a">
-    <link rel="stylesheet" href="devices.css?v=20261102a">
-    <link rel="stylesheet" href="scenes.css?v=20261102a">
+    <link rel="stylesheet" href="style.css?v=20261102b">
+    <link rel="stylesheet" href="newspaper.css?v=20261102b">
+    <link rel="stylesheet" href="devices.css?v=20261102b">
+    <link rel="stylesheet" href="scenes.css?v=20261102b">
 </head>
 <body>
 
@@ -361,6 +361,19 @@
 
 <div id="members-pop" class="members-pop" hidden></div>
 
+<!-- 만화 컷 크게 보기 -->
+<div id="comic-zoom" class="overlay comic-zoom" hidden onclick="if (event.target === this) this.hidden = true">
+    <div class="comic-zoom-box">
+        <img id="comic-zoom-img" alt="">
+        <div class="comic-zoom-nav">
+            <button class="btn btn-small btn-ghost" onclick="moveComicZoom(-1)">◀ 이전</button>
+            <span id="comic-zoom-count"></span>
+            <button class="btn btn-small btn-ghost" onclick="moveComicZoom(1)">다음 ▶</button>
+            <button class="btn btn-small btn-dark" onclick="$('comic-zoom').hidden = true">닫기</button>
+        </div>
+    </div>
+</div>
+
 <!-- 이름·역할 바꾸기 -->
 <div id="member-modal" class="overlay" hidden>
     <div class="member-modal">
@@ -400,12 +413,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="config.js?v=20261102a"></script>
-<script src="themes.js?v=20261102a"></script>
-<script src="common.js?v=20261102a"></script>
-<script src="devices.js?v=20261102a"></script>
-<script src="scenes.js?v=20261102a"></script>
-<script src="ai.js?v=20261102a"></script>
-<script src="app.js?v=20261102a"></script>
+<script src="config.js?v=20261102b"></script>
+<script src="themes.js?v=20261102b"></script>
+<script src="common.js?v=20261102b"></script>
+<script src="devices.js?v=20261102b"></script>
+<script src="scenes.js?v=20261102b"></script>
+<script src="ai.js?v=20261102b"></script>
+<script src="app.js?v=20261102b"></script>
 </body>
 </html>

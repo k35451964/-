@@ -2,5 +2,6 @@
 # (관리자 권한 없이, 읽기 전용 환경에서도 실행됨)
 FROM busybox:1.36
 COPY index.html teacher.html *.css *.js /www/
+COPY images /www/images
 EXPOSE 8080
 CMD ["httpd", "-f", "-v", "-p", "8080", "-h", "/www"]

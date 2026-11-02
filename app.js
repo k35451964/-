@@ -665,6 +665,21 @@ function advance(n) {
 // ==========================================
 // 테마 선택
 // ==========================================
+// 만화 컷 크게 보기 (휴대폰에서 글씨가 작을 때)
+let comicZoomIndex = 0;
+function openComicZoom(i) {
+    comicZoomIndex = i;
+    const p = theme().comic[i];
+    $('comic-zoom-img').src = p.image;
+    $('comic-zoom-img').alt = p.text;
+    $('comic-zoom-count').textContent = `${i + 1} / ${theme().comic.length}`;
+    $('comic-zoom').hidden = false;
+}
+function moveComicZoom(dir) {
+    const n = theme().comic.length;
+    openComicZoom((comicZoomIndex + dir + n) % n);
+}
+
 function finishStory() {
     if (!canSubmit('story')) return;
     if (!(state.problem || '').trim() && !confirm('아직 탐구 문제를 쓰지 않았어요. 그래도 다음 단계로 넘어갈까요?')) return;
@@ -727,8 +742,10 @@ function buildThemeUI() {
     $('story-text').textContent = th.story;
     $('story-visual').innerHTML = th.image
         ? `<img class="story-image" src="${th.image}" alt="${escapeHtml(th.title)} 이야기 그림">`
-        : `<div class="comic">${th.comic.map((p, i) => `
-            <div class="comic-panel"><span class="comic-no">${i + 1}</span>
+        : `<div class="comic ${th.comic[0].image ? 'with-images' : ''}">${th.comic.map((p, i) => p.image
+            ? `<button type="button" class="comic-img-panel" onclick="openComicZoom(${i})" title="크게 보기">
+                <img src="${p.image}" alt="${escapeHtml(p.text)}" loading="lazy"></button>`
+            : `<div class="comic-panel"><span class="comic-no">${i + 1}</span>
                 <div class="comic-emoji">${p.emoji}</div><p>${escapeHtml(p.text)}</p></div>`).join('')}</div>`;
 
     const header = `<div class="var-header"><div>변인 (조건)</div><div>어떻게 할까요?</div><div>구체적인 설정</div></div>`;
