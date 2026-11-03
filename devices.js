@@ -96,23 +96,7 @@ const DEVICES = {
         </div>`;
     },
 
-    // 4. 혈액 원심분리 / 항체 분석기 (백신)
-    analyzer(v) {
-        const busy = v.phase === 'busy1' || v.phase === 'busy2';
-        return `
-        <div class="device device-analyzer">
-            <div class="an-top">
-                <div class="an-window"><div class="an-rotor ${v.phase === 'busy1' ? 'spin-fast' : ''} ${v.phase === 'busy2' ? 'spin' : ''}"><i></i><i></i><i></i><i></i></div></div>
-                <div class="an-side"><b>IMMUNO-ANALYZER</b><span>IgG 항체 정량</span><div class="an-leds"><i class="${busy ? 'blink' : 'on'}"></i><i class="${busy ? '' : 'on'}"></i></div></div>
-            </div>
-            <div class="an-screen">
-                ${busy ? '<div class="an-spinner"></div>' : ''}
-                ${deviceScreenText(v, 'dv-value')}
-            </div>
-        </div>`;
-    },
-
-    // 5. 현미경 콜로니 카운터 (페니실린)
+    // 4. 현미경 콜로니 카운터 (페니실린)
     counter(v) {
         const mold = v.cond ? v.cond[0] === 1 : false;
         const ecoli = v.cond ? v.cond[2] === 1 : false;

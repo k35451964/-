@@ -70,6 +70,11 @@ function toast(message, type = 'info', onClick) {
     setTimeout(() => el.remove(), type === 'feedback' ? 9600 : 4100);
 }
 
+// 없어진 테마(예: 예전 백신 테마)는 '테마 선택 전'으로 다룬다
+function validThemeId(id) {
+    return id && THEMES[id] ? id : null;
+}
+
 function teamLabel(t) {
     return `${t.grade}학년 ${t.class_no}반 ${t.team_no}조`;
 }
@@ -386,9 +391,9 @@ const METRICS = [
         prompt: '두 집단의 최댓값을 각각 알려 줘.', compute: (c, e) => ({ c: [statOf.max(c)], e: [statOf.max(e)] }) },
     { id: 'change', group: 'pair', name: '처음 대비 변화량', desc: '마지막 값 − 처음 값 (처음보다 얼마나 늘거나 줄었나)',
         prompt: '처음 대비 변화량(마지막 값 − 처음 값)을 각각 구해 줘.', compute: (c, e) => ({ c: [statOf.change(c)], e: [statOf.change(e)] }) },
-    { id: 'rate', group: 'pair', name: '처음 대비 변화율(%)', desc: '(마지막 값 − 처음 값) ÷ 처음 값 × 100 (처음 값이 달라도 공정하게 비교)', unit: '%', decimals: 1, exclude: ['vaccine'],
+    { id: 'rate', group: 'pair', name: '처음 대비 변화율(%)', desc: '(마지막 값 − 처음 값) ÷ 처음 값 × 100 (처음 값이 달라도 공정하게 비교)', unit: '%', decimals: 1,
         prompt: '처음 측정값 대비 마지막 측정값의 변화율(%)을 구해 줘.', compute: (c, e) => ({ c: [statOf.rate(c)], e: [statOf.rate(e)] }) },
-    { id: 'peakTime', group: 'pair', name: '가장 높았던 시점', desc: '값이 가장 높았던 측정 시점 (언제 최고점에 도달했나)', themes: ['cola', 'vaccine'], unit: 'time', decimals: 0,
+    { id: 'peakTime', group: 'pair', name: '가장 높았던 시점', desc: '값이 가장 높았던 측정 시점 (언제 최고점에 도달했나)', themes: ['cola'], unit: 'time', decimals: 0,
         prompt: '값이 가장 높았던 시점을 집단별로 알려 줘.',
         compute: (c, e, th) => {
             const t = th.measure.labels.map(l => parseInt(l, 10) || 0);
@@ -403,7 +408,7 @@ const METRICS = [
     { id: 'diffSeries', group: 'series', name: '시점별 두 집단의 차이', desc: '측정 시점마다 두 값의 차이(큰 값 − 작은 값) — 차이가 언제 커지고 작아지나', rows: ['d'], cols: 5,
         prompt: '각 측정 시점마다 두 집단의 차이(큰 값 − 작은 값)를 구해 줘.',
         compute: (c, e) => ({ d: c.map((x, i) => (x === null || e[i] === null ? null : Math.abs(e[i] - x))) }) },
-    { id: 'rateSeries', group: 'series', name: '시점별 처음 대비 변화율(%)', desc: '각 시점의 (값 − 처음 값) ÷ 처음 값 × 100 — 처음 값을 0%로 맞춰 변화 추이를 비교', cols: 5, unit: '%', decimals: 1, exclude: ['vaccine'],
+    { id: 'rateSeries', group: 'series', name: '시점별 처음 대비 변화율(%)', desc: '각 시점의 (값 − 처음 값) ÷ 처음 값 × 100 — 처음 값을 0%로 맞춰 변화 추이를 비교', cols: 5, unit: '%', decimals: 1,
         prompt: '각 측정 시점의 처음 대비 변화율(%)을 집단별로 구해 줘.',
         compute: (c, e) => {
             const r = v => v.map(x => (x === null || v[0] === null || v[0] === 0 ? null : (x - v[0]) / v[0] * 100));

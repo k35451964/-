@@ -176,7 +176,7 @@ async function loadRoster() {
         setIntroMsg('모둠 목록을 불러오지 못했어요. 인터넷 연결을 확인한 뒤 새로고침 해 주세요.', true);
         return;
     }
-    roster = data || [];
+    roster = (data || []).map(t => ({ ...t, theme_id: validThemeId(t.theme_id) }));
     if (!roster.length) {
         ['grade-select', 'class-select', 'team-select'].forEach(id => { $(id).innerHTML = ''; });
         setIntroMsg('아직 선생님이 모둠을 만들지 않았어요. 잠시 후 새로고침 해 주세요.');
@@ -239,7 +239,7 @@ async function enterTeamById(id) {
     storageSet('lastTeamId', id);
     setIntroMsg('');
     resetLocalSync();
-    team = data;
+    team = { ...data, theme_id: validThemeId(data.theme_id) };
     state = { ...(data.state || {}) };
     $('topbar').hidden = false;
     $('feedback-fab').hidden = false;
@@ -504,6 +504,7 @@ function teamGone() {
 
 // 서버에서 모둠 정보가 바뀌었을 때 (다른 모둠원의 입력, 선생님의 초기화 등)
 function onTeamRow(row) {
+    row = { ...row, theme_id: validThemeId(row.theme_id) };
     if (!team || row.id !== team.id) return;
 
     if (row.theme_id !== team.theme_id) {
@@ -1534,7 +1535,7 @@ async function loadEvaluations() {
     ]);
     myEvals = {};
     (mine.data || []).forEach(r => { myEvals[`${r.kind}|${r.target}`] = r.answers || {}; });
-    otherTeams = (all.data || [])
+    otherTeams = (all.data || []).map(t => ({ ...t, theme_id: validThemeId(t.theme_id) }))
         .filter(t => t.id !== team.id && t.grade === team.grade && t.class_no === team.class_no)
         .sort((a, b) => a.team_no - b.team_no);
     evalPanelSig = '';

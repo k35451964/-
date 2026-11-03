@@ -167,41 +167,7 @@ const SCENES = {
         return svgWrap(`${bg}${bushes}${mice}<g class="hawks">${hawkSvg}</g>${drone}${sceneTag(`🦅 독수리 ${hawkCount}마리 · ${v.label}`)}`);
     },
 
-    // ---------- 4. 백신과 항체 ----------
-    analyzer(v) {
-        const [doses, age, ill, since] = v.cond;
-        const old = age === 1, sick = ill === 1;
-        const figure = person({ x: 92, y: 60, old, sick, shirt: '#a3c4f3', armOut: v.phase === 'busy1', cane: old });
-        const bandAids = Array.from({ length: doses }, (_, i) =>
-            `<rect x="${97 + i * 2}" y="${84 + i * 8}" width="11" height="6" rx="2" fill="#fde2c4" stroke="#d4a373" transform="rotate(-20 ${102 + i * 2} ${87 + i * 8})"/>`).join('');
-        const iv = sick ? `<g><line x1="40" y1="40" x2="40" y2="150" stroke="#95a5a6" stroke-width="3"/><rect x="30" y="40" width="20" height="26" rx="4" fill="#d6eaf8" stroke="#85c1e9"/>
-            <path d="M 40 66 q 10 30 38 30" stroke="#85c1e9" stroke-width="1.5" fill="none"/></g>` : '';
-        const rnd = makeRandom(`virus|${v.cond.join('')}`);
-        const viruses = Array.from({ length: 5 }, () => {
-            const x = 150 + rnd() * 50, y = 40 + rnd() * 90;
-            return `<g class="virus" style="animation-delay:-${(rnd() * 3).toFixed(1)}s"><circle cx="${x}" cy="${y}" r="5" fill="#58d68d"/>
-                ${[0, 60, 120, 180, 240, 300].map(a => `<line x1="${x}" y1="${y}" x2="${x + Math.cos(a * Math.PI / 180) * 8}" y2="${y + Math.sin(a * Math.PI / 180) * 8}" stroke="#28b463" stroke-width="1.5"/>`).join('')}</g>`;
-        }).join('');
-        const antibodyCount = v.index >= 0 && v.values ? Math.min(16, Math.round(v.values[v.index] / 35)) : 0;
-        const rnd2 = makeRandom(`ab|${v.cond.join('')}`);
-        const antibodies = Array.from({ length: antibodyCount }, () => {
-            const x = 112 + rnd2() * 90, y = 30 + rnd2() * 110;
-            return `<path class="antibody" d="M ${x} ${y + 8} v -6 l -5 -6 M ${x} ${y + 2} l 5 -6" stroke="#8e44ad" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
-        }).join('');
-        const syringe = v.phase === 'busy1'
-            ? `<g class="anim-syringe"><rect x="134" y="94" width="34" height="9" rx="2" fill="#fff" stroke="#95a5a6"/><rect class="syringe-fill" x="136" y="96" width="30" height="5" fill="#c0392b"/>
-                 <line x1="134" y1="98.5" x2="124" y2="98.5" stroke="#7f8c8d" stroke-width="1.5"/><rect x="168" y="96" width="8" height="5" fill="#bdc3c7"/></g>` : '';
-        const tube = v.phase === 'busy2' ? `<g class="anim-tube"><rect x="230" y="80" width="10" height="34" rx="4" fill="#fff" stroke="#95a5a6"/><rect x="231" y="96" width="8" height="17" rx="3" fill="#c0392b"/></g>` : '';
-        const info = `<g><rect x="220" y="14" width="92" height="56" rx="8" fill="#fff" stroke="#d6e4f0"/>
-            <text x="266" y="32" text-anchor="middle" font-size="10.5" font-weight="800" fill="#1e5aa8">💉 접종 ${doses}회</text>
-            <text x="266" y="48" text-anchor="middle" font-size="10" fill="#2c3e50">${old ? '70대' : '20대'}${sick ? ' · 면역 저하' : ''}</text>
-            <text x="266" y="63" text-anchor="middle" font-size="9.5" fill="#7f8c8d">${doses ? `마지막 접종 ${since === 0 ? '1개월' : '1년'} 전` : '접종 기록 없음'}</text></g>`;
-        const bg = `<rect width="320" height="190" fill="#eef5fc"/><rect y="160" width="320" height="30" fill="#d4e3f1"/>
-            <g opacity="0.25"><rect x="22" y="10" width="20" height="6" fill="#e74c3c"/><rect x="29" y="3" width="6" height="20" fill="#e74c3c"/></g>`;
-        return svgWrap(`${bg}${iv}${viruses}${antibodies}${figure}${bandAids}${syringe}${tube}${info}${sceneTag(`🦠 ${v.label === '침입 직후' ? v.label : `침입 후 ${v.label}`}`, 8, 160)}`);
-    },
-
-    // ---------- 5. 페니실린 (배양기) ----------
+    // ---------- 4. 페니실린 (배양기) ----------
     counter(v) {
         const [mold, temp, ecoli, poor] = v.cond;
         const hot = temp === 1;

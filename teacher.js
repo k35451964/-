@@ -106,7 +106,7 @@ async function loadAll() {
         toast('모둠 정보를 불러오지 못했어요. 새로고침 해 주세요.', 'error');
         return;
     }
-    teams = t.data || [];
+    teams = (t.data || []).map(x => ({ ...x, theme_id: validThemeId(x.theme_id) }));
     sortTeams();
     allMessages = m.data || [];
     fillFilters();
@@ -159,8 +159,9 @@ function onTeamChange(p) {
         if (detailId === p.old.id) closeDetail();
     } else {
         const i = teams.findIndex(t => t.id === p.new.id);
-        if (i >= 0) teams[i] = p.new;
-        else teams.push(p.new);
+        const row = { ...p.new, theme_id: validThemeId(p.new.theme_id) };
+        if (i >= 0) teams[i] = row;
+        else teams.push(row);
         sortTeams();
         lastChange[p.new.id] = Date.now();
         if (detailId === p.new.id) renderDetail();

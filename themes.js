@@ -1,5 +1,5 @@
 // ==========================================
-// 5가지 탐구 테마: 스토리, 변인, 측정 정보, 시뮬레이션 모델
+// 4가지 탐구 테마: 스토리, 변인, 측정 정보, 시뮬레이션 모델
 // ------------------------------------------
 // model(c, rnd): c는 변인별로 선택한 옵션의 번호(0부터) 배열,
 //                rnd는 0~1 난수 함수(모둠·설계마다 고정된 씨앗값).
@@ -134,50 +134,6 @@ const THEMES = {
         }
     },
 
-    vaccine: {
-        title: '백신과 항체 형성',
-        icon: '💉',
-        teaser: '미리 맞는 주사, 정말 효과가 있을까?',
-        image: null,
-        comic: [
-            { image: 'images/vaccine-1.webp', text: '19세기 말, 매년 겨울마다 정체불명의 ‘플루’가 세상을 덮쳤다' },
-            { image: 'images/vaccine-2.webp', text: '사람들은 이를 ‘겨울 악마의 입김’이라 불렀다' },
-            { image: 'images/vaccine-3.webp', text: '괴짜 과학자 닥터 문: “미리 살짝 맞아 두면 겨울 악마도 끄떡없소!”' },
-            { image: 'images/vaccine-4.webp', text: '“수상한데…” “주사를 왜 맞아?” “사기 아냐?”' },
-            { image: 'images/vaccine-5.webp', text: '그때, 마을에서 가장 영리한 학생들이 나섰다' },
-            { image: 'images/vaccine-6.webp', text: '그 주사기가 정말 효과가 있는지 우리가 밝혀내 보겠어!' }
-        ],
-        story: '19세기 말, 매년 겨울마다 정체불명의 ‘플루’가 세상을 덮쳤다. 사람들은 이를 ‘겨울 악마의 입김’이라 불렀다. 그러던 어느 날 괴짜 과학자 ‘닥터 문’이 나타나 “이걸 미리 살짝 맞아 두면 겨울 악마도 끄떡없소!”라며 주사기를 내밀었다. “수상한데…”, “사기 아냐?” 마을 사람들이 웅성일 때, 가장 영리한 학생들이 나섰다. 그 주사기가 정말 효과가 있는지 밝혀내 보자.',
-        vars: [
-            { name: '사전 백신 접종', options: ['접종 안 함', '1회 접종', '2회 접종'] },
-            { name: '나이', options: ['20대', '70대'] },
-            { name: '면역 저하 질환', options: ['없음', '있음'] },
-            { name: '마지막 접종 후 지난 기간', options: ['1개월', '1년'] }
-        ],
-        measure: { name: '항체 농도', unit: 'AU/mL', decimals: 0, axis: '바이러스 침입 후 경과 일수', labels: ['침입 직후', '7일', '14일', '21일', '28일'] },
-        device: 'analyzer',
-        deviceText: { btn: '🧪 혈액 분석 시작', nextBtn: '🧪 다음 시점 혈액 분석', anim1: '원심분리 가동 중... 🌀', anim2: '항체 농도 분석 중... 🔬' },
-        model(c, rnd) {
-            const old = c[1] === 1;
-            const F = (old ? 0.55 : 1) * (c[2] === 1 ? 0.6 : 1);
-            let values;
-            if (c[0] === 0) {
-                // 1차 면역 반응: 늦고 약하다 (기억 세포 없음 → 지난 기간은 영향 없음)
-                const shape = old ? [0, 0.06, 0.45, 0.85, 1] : [0, 0.12, 0.7, 1, 0.75];
-                values = shape.map(s => 60 * F * s);
-            } else {
-                // 2차 면역 반응: 기억 세포 덕분에 빠르고 강하다
-                const dose = c[0] === 2 ? 1.6 : 1;
-                const wane = c[3] === 1 ? 0.6 : 1;
-                const A = 420 * dose * wane * F;
-                const b = (c[3] === 0 ? 45 : 10) * dose * F;   // 이미 남아 있던 항체
-                const shape = old ? [0, 0.5, 0.9, 1, 0.85] : [0, 0.75, 1, 0.82, 0.65];
-                values = shape.map(s => b + A * s);
-            }
-            return values.map(v => v * (1 + gaussian(rnd) * 0.05) + gaussian(rnd) * 1.5);
-        }
-    },
-
     penicillin: {
         title: '페니실린의 발견',
         icon: '🧫',
@@ -222,4 +178,4 @@ const THEMES = {
     }
 };
 
-const THEME_ORDER = ['cola', 'osmosis', 'selection', 'vaccine', 'penicillin'];
+const THEME_ORDER = ['cola', 'osmosis', 'selection', 'penicillin'];

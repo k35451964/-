@@ -8,7 +8,7 @@
 
 .scene-svg .anim-lancet, .scene-svg .anim-blood, .scene-svg .anim-strip, .scene-svg .leg-a, .scene-svg .leg-b,
 .scene-svg .anim-lift, .scene-svg .anim-tweezers, .scene-svg .mouse-run, .scene-svg .anim-drone-in, .scene-svg .anim-drone-hover,
-.scene-svg .prop, .scene-svg .virus, .scene-svg .antibody, .scene-svg .anim-syringe, .scene-svg .syringe-fill, .scene-svg .anim-tube,
+.scene-svg .prop,
 .scene-svg .anim-dish-out, .scene-svg .anim-door, .scene-svg .clock-hand, .scene-svg .scene-bubble { transform-box: fill-box; }
 
 /* 콜라: 채혈 */
@@ -43,17 +43,6 @@
 @keyframes prop { from { transform: scaleX(1); } to { transform: scaleX(0.3); } }
 .scan-beam { animation: beam 0.8s ease-in-out infinite alternate; }
 @keyframes beam { from { opacity: 0.3; } to { opacity: 1; } }
-
-/* 백신: 바이러스·항체·채혈 */
-.virus { animation: bob 3s ease-in-out infinite alternate; }
-@keyframes bob { from { transform: translate(0, -4px); } to { transform: translate(-6px, 4px); } }
-.antibody { transform-origin: center; animation: pop-in 0.5s ease-out both; }
-.anim-syringe { animation: syringe 1s ease-out forwards; }
-@keyframes syringe { from { transform: translateX(40px); } to { transform: translateX(0); } }
-.syringe-fill { transform-origin: left center; animation: fill 1.2s 1s ease-in both; }
-@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.anim-tube { animation: tube 1.6s ease-in forwards; }
-@keyframes tube { 0% { transform: translate(-120px, 0); } 60% { transform: translate(0, 0); } 100% { transform: translate(80px, 0); opacity: 0.2; } }
 
 /* 페니실린: 배양기 */
 .anim-door { transform-origin: left center; animation: door 1s ease-in-out forwards; }
