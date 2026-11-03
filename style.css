@@ -20,7 +20,7 @@ body {
     background: var(--bg);
     color: var(--navy);
     margin: 0;
-    padding: 0 0 90px;
+    padding: 0 0 150px;     /* 오른쪽 아래 'Powered by Netlify' 표시에 가리지 않도록 */
     word-break: keep-all;
     -webkit-text-size-adjust: 100%;
 }
@@ -287,7 +287,7 @@ textarea { resize: vertical; line-height: 1.5; }
 @keyframes pop { from { transform: scale(1); } to { transform: scale(1.05); } }
 
 .feedback-fab {
-    position: fixed; right: 16px; bottom: 16px; z-index: 120;
+    position: fixed; right: 16px; bottom: 76px; z-index: 120;   /* Netlify 표시(아래 약 60px) 위로 */
     background: var(--navy); color: #fff; border: none; border-radius: 30px;
     padding: 13px 20px; font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
@@ -296,7 +296,7 @@ textarea { resize: vertical; line-height: 1.5; }
 @keyframes nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .badge { background: var(--red); color: #fff; border-radius: 12px; padding: 1px 8px; font-size: 12px; margin-left: 4px; }
 .feedback-panel {
-    position: fixed; right: 16px; bottom: 78px; z-index: 130;
+    position: fixed; right: 16px; bottom: 138px; z-index: 130;
     width: 360px; max-width: calc(100% - 32px); max-height: 60vh;
     background: #fff; border-radius: 16px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
     display: flex; flex-direction: column; overflow: hidden;
