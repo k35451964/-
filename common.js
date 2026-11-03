@@ -154,12 +154,12 @@ function designSignature(themeId, state) {
 }
 
 // ---------- 가설 · 예측 ----------
-const HYPO_KEYS = ['hypo.control', 'hypo.manip', 'hypo.dep', 'hypo.effect'];
+const HYPO_KEYS = ['hypo.manip', 'hypo.dep', 'hypo.effect'];
 const PRED_KEYS = ['pred.dir'];
 
 function composeHypothesis(state) {
     const v = k => (state[k] || '').trim();
-    return `[${v('hypo.control')}]이(가) 같을 때, [${v('hypo.manip')}]은(는) [${v('hypo.dep')}]에 영향을 ${v('hypo.effect') || '___'}.`;
+    return `[${v('hypo.manip')}]은(는) [${v('hypo.dep')}]에 영향을 ${v('hypo.effect') || '___'}.`;
 }
 
 // 예측의 '대조군 값 대신 실험군 값'은 변인 표에서 정한 조작 변인 값을 그대로 쓴다
@@ -716,7 +716,7 @@ const EVAL_SCALE = ['노력이 필요해요', '보통이에요', '잘했어요',
 
 const SELF_ITEMS = [
     { key: 'q1', short: '탐구 문제', text: '스토리 속 관찰 사례에서 규칙을 찾아 탐구 문제를 정할 수 있었다.', std: '02-01 귀납' },
-    { key: 'q2', short: '가설·예측', text: '조작 변인·통제 변인·종속 변인을 구분해 가설과 예측을 세울 수 있었다.', std: '02-02 연역' },
+    { key: 'q2', short: '가설·예측', text: '원인(조작 변인)과 결과(종속 변인)를 구분해 가설과 예측을 세울 수 있었다.', std: '02-02 연역' },
     { key: 'q3', short: '변인 통제', text: '대조군과 실험군을 정하고 변인을 통제한 실험을 설계할 수 있었다.', std: '02-02' },
     { key: 'q4', short: '그래프 표상', text: '데이터의 성격에 맞는 그래프를 고르고 그 이유를 설명할 수 있었다.', std: '02-03 표상' },
     { key: 'q5', short: '가설 검증', text: '예측과 실제 결과를 비교해 데이터를 근거로 가설을 검증할 수 있었다.', std: '02-04' },

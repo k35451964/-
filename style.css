@@ -199,6 +199,13 @@ textarea { resize: vertical; line-height: 1.5; }
 .hypo-label { font-weight: 800; }
 .hypo-row input { width: 170px; flex: 0 1 auto; }
 .hypo-row input.hypo-wide { width: 300px; }
+.hypo-row:has(.hypo-field) { align-items: flex-end; }
+.hypo-field { display: flex; flex-direction: column; gap: 6px; flex: 1 1 200px; max-width: 280px; }
+.hypo-field input { width: 100%; }
+.hypo-tag { align-self: flex-start; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+.hypo-tag.cause { background: #fdecea; color: #c0392b; }
+.hypo-tag.effect { background: #e8f1fb; color: #1f5f99; }
+.hypo-join { padding-bottom: 12px; white-space: nowrap; }
 
 /* ==========================================
    3. 실험 · 기록표 · 그래프
@@ -324,6 +331,8 @@ textarea { resize: vertical; line-height: 1.5; }
     .var-row { grid-template-columns: 1fr; gap: 8px; }
     .var-field { grid-template-columns: 92px 1fr; }
     .hypo-row input, .hypo-row input.hypo-wide { width: 100%; }
+    .hypo-field { max-width: none; flex-basis: 100%; }
+    .hypo-join { padding-bottom: 0; }
     .chart-type-container { grid-template-columns: repeat(2, 1fr); }
     .canvas-container { height: 300px; padding: 10px; }
     .val-buttons { flex-direction: column; }
