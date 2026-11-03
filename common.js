@@ -715,7 +715,7 @@ function buildNewspaperHtml({ team, theme, state, chart1Url, chart2Url, editable
 const EVAL_SCALE = ['노력이 필요해요', '보통이에요', '잘했어요', '매우 잘했어요'];
 
 const SELF_ITEMS = [
-    { key: 'q2', short: '가설·예측', text: '원인(조작 변인)과 결과(종속 변인)를 구분해 가설과 예측을 세울 수 있었다.', std: '02-02 연역' },
+    { key: 'q2', short: '가설·예측', text: '조작 변인(원인)과 종속 변인(결과)을 구분해 가설과 예측을 세울 수 있었다.', std: '02-02 연역' },
     { key: 'q3', short: '변인 통제', text: '대조군과 실험군을 정하고 변인을 통제한 실험을 설계할 수 있었다.', std: '02-02' },
     { key: 'q4', short: '그래프 표상', text: '데이터의 성격에 맞는 그래프를 고르고 그 이유를 설명할 수 있었다.', std: '02-03 표상' },
     { key: 'q5', short: '가설 검증', text: '예측과 실제 결과를 비교해 데이터를 근거로 가설을 검증할 수 있었다.', std: '02-04' },
