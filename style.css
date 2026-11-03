@@ -470,3 +470,19 @@ textarea { resize: vertical; line-height: 1.5; }
 .theme-wait-icon { font-size: 56px; animation: pop 1.2s infinite alternate; }
 .theme-card.preview { cursor: default; opacity: 0.75; }
 .theme-card.preview:hover { transform: none; border-color: var(--line); box-shadow: none; }
+
+/* 평가 문항 미리 보기 (교사) */
+.eval-panel.preview .star-btn { cursor: default; opacity: .55; }
+.eval-panel.preview textarea { background: #f8fafc; cursor: default; }
+.eq-wrap { display: grid; gap: 14px; }
+.eq-block { background: var(--soft); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+.eq-block h4 { margin: 0 0 4px; font-size: 16px; }
+.eq-when { margin: 0 0 10px; font-size: 13px; }
+.eq-sub { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #475569; }
+.eq-list { margin: 0 0 10px; padding-left: 22px; line-height: 1.8; }
+.eq-text { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.eq-text small { font-size: 12px; }
+.eq-details { margin: 0 0 16px; border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; background: #fff; }
+.eq-details summary { cursor: pointer; font-weight: 800; }
+.eq-details[open] summary { margin-bottom: 12px; }
+#eval-questions { margin-top: 12px; }

@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>교사용 대시보드 - 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261103e">
-    <link rel="stylesheet" href="newspaper.css?v=20261103e">
-    <link rel="stylesheet" href="teacher.css?v=20261103e">
+    <link rel="stylesheet" href="style.css?v=20261103f">
+    <link rel="stylesheet" href="newspaper.css?v=20261103f">
+    <link rel="stylesheet" href="teacher.css?v=20261103f">
 </head>
 <body class="teacher">
 
@@ -133,8 +133,9 @@
         <h2>📋 평가 결과</h2>
         <p class="hint" id="eval-modal-target"></p>
         <div class="eval-result-tabs" id="eval-result-tabs"></div>
-        <div class="eval-result-actions"><button class="btn btn-small btn-primary" onclick="downloadEvalCSV()">⬇️ 엑셀(CSV)로 내려받기</button></div>
-        <div class="table-scroll"><table class="rp-table eval-table" id="eval-table"></table></div>
+        <div class="eval-result-actions" id="eval-csv-actions"><button class="btn btn-small btn-primary" onclick="downloadEvalCSV()">⬇️ 엑셀(CSV)로 내려받기</button></div>
+        <div class="table-scroll" id="eval-table-wrap"><table class="rp-table eval-table" id="eval-table"></table></div>
+        <div id="eval-questions" hidden></div>
     </div>
 </div>
 
@@ -154,9 +155,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="config.js?v=20261103e"></script>
-<script src="themes.js?v=20261103e"></script>
-<script src="common.js?v=20261103e"></script>
-<script src="teacher.js?v=20261103e"></script>
+<script src="config.js?v=20261103f"></script>
+<script src="themes.js?v=20261103f"></script>
+<script src="common.js?v=20261103f"></script>
+<script src="teacher.js?v=20261103f"></script>
 </body>
 </html>

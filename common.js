@@ -715,7 +715,6 @@ function buildNewspaperHtml({ team, theme, state, chart1Url, chart2Url, editable
 const EVAL_SCALE = ['노력이 필요해요', '보통이에요', '잘했어요', '매우 잘했어요'];
 
 const SELF_ITEMS = [
-    { key: 'q1', short: '탐구 문제', text: '스토리 속 관찰 사례에서 규칙을 찾아 탐구 문제를 정할 수 있었다.', std: '02-01 귀납' },
     { key: 'q2', short: '가설·예측', text: '원인(조작 변인)과 결과(종속 변인)를 구분해 가설과 예측을 세울 수 있었다.', std: '02-02 연역' },
     { key: 'q3', short: '변인 통제', text: '대조군과 실험군을 정하고 변인을 통제한 실험을 설계할 수 있었다.', std: '02-02' },
     { key: 'q4', short: '그래프 표상', text: '데이터의 성격에 맞는 그래프를 고르고 그 이유를 설명할 수 있었다.', std: '02-03 표상' },
@@ -725,8 +724,8 @@ const SELF_ITEMS = [
 const SELF_TEXTS = [
     { key: 'limit', q: '토의를 통해 새로 발견한 우리 탐구 설계의 한계점이나 논리적 비약은?',
         example: '예: (식물 실험이라면) 화분을 한 개씩만 키워서 우연히 생긴 차이일 수도 있다는 점을 발견했다.' },
-    { key: 'method', q: '이번 탐구에서 귀납과 연역은 각각 어느 단계에서 나타났나요?',
-        example: '예: 귀납은 ○○ 단계에서, 연역은 ○○ 단계에서 나타났다. 왜냐하면 ...' }
+    { key: 'hpv', q: '이번 탐구에서 가설 → 예측 → 검증은 각각 무엇이었나요?',
+        example: '예: (식물 실험이라면) 가설은 "햇빛을 받는 시간은 식물의 키에 영향을 준다", 예측은 "햇빛을 오래 받은 화분이 더 클 것이다", 검증은 "실제로 키를 재어 보니 ○○였다".' }
 ];
 const PEER_ITEMS = [
     { key: 'role', short: '역할 수행', text: '맡은 역할을 책임감 있게 수행했다.' },
@@ -740,6 +739,19 @@ const TEAM_ITEMS = [
     { key: 'evidence', short: '데이터 근거', text: '결론이 데이터에 근거했다.' }
 ];
 const TEAM_TEXT = { key: 'comment', q: '질문이나 조언 한 줄', example: '예: 실제 실험이었다면 ○○ 때문에 오차가 생기지 않았을까요?' };
+
+// 평가 문항 전체 목록 (교사 확인용)
+function evalQuestionsHtml() {
+    const items = list => `<ol class="eq-list">${list.map(it => `<li>${escapeHtml(it.text)}${it.std ? ` <small class="eval-std">${it.std}</small>` : ''}</li>`).join('')}</ol>`;
+    const texts = list => list.map(t => `<div class="eq-text"><b>✍️ ${escapeHtml(t.q)}</b><small class="muted">${escapeHtml(t.example)}</small></div>`).join('');
+    const block = (title, when, starList, textList) => `<section class="eq-block"><h4>${title}</h4><p class="muted eq-when">${when}</p>
+        <p class="eq-sub">⭐ 별점 문항 (별 4개: ${EVAL_SCALE.map((s, i) => `${i + 1} ${s}`).join(' · ')})</p>${items(starList)}${texts(textList)}</section>`;
+    return `<div class="eq-wrap">
+        ${block('🎤 다른 모둠 발표 평가', '일반화(발표·상호 토의) 시간 · 다른 모둠마다 작성', TEAM_ITEMS, [TEAM_TEXT])}
+        ${block('🙋 자기평가', '정리 시간 · 각자 1번 작성', SELF_ITEMS, SELF_TEXTS)}
+        ${block('🤝 모둠원 평가', '정리 시간 · 같은 모둠 친구마다 작성', PEER_ITEMS, [PEER_TEXT])}
+    </div>`;
+}
 
 function starAverage(answers, items) {
     const vals = items.map(it => Number(answers && answers[it.key])).filter(v => v >= 1 && v <= 4);

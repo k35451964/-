@@ -403,10 +403,10 @@ function evalRows(tab) {
     const sortKey = r => r.slice(0, 4).join('|');
     if (tab === 'self') {
         return {
-            header: ['학년', '반', '조', '이름', '역할', ...SELF_ITEMS.map(i => i.short), '평균', '한계점·논리적 비약', '귀납과 연역', '저장 시각'],
+            header: ['학년', '반', '조', '이름', '역할', ...SELF_ITEMS.map(i => i.short), '평균', '한계점·논리적 비약', '가설→예측→검증', '저장 시각'],
             rows: list.filter(e => e.kind === 'self').map(e => [...base(e), e.evaluator_name, roleName(e.evaluator_role),
                 ...SELF_ITEMS.map(i => e.answers[i.key] || ''), fmtAvg(starAverage(e.answers, SELF_ITEMS)),
-                e.answers.limit || '', e.answers.method || '', new Date(e.updated_at).toLocaleString('ko-KR')]).sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
+                e.answers.limit || '', e.answers.hpv || '', new Date(e.updated_at).toLocaleString('ko-KR')]).sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
         };
     }
     if (tab === 'peer') {
@@ -454,7 +454,8 @@ const EVAL_RESULT_TABS = [
     { id: 'summary', name: '학생별 요약', file: 'summary' },
     { id: 'self', name: '자기평가', file: 'self' },
     { id: 'peer', name: '모둠원 평가', file: 'peer' },
-    { id: 'team', name: '다른 모둠 발표 평가', file: 'team' }
+    { id: 'team', name: '다른 모둠 발표 평가', file: 'team' },
+    { id: 'questions', name: '📝 평가 문항 보기' }
 ];
 
 function openEvalModal() {
@@ -472,6 +473,14 @@ function setEvalResultTab(tab) {
 function renderEvalTable() {
     $('eval-result-tabs').innerHTML = EVAL_RESULT_TABS.map(tab =>
         `<button class="stage-tab ${tab.id === evalResultTab ? 'active' : ''}" onclick="setEvalResultTab('${tab.id}')">${tab.name}</button>`).join('');
+    const showQuestions = evalResultTab === 'questions';
+    $('eval-questions').hidden = !showQuestions;
+    $('eval-table-wrap').hidden = showQuestions;
+    $('eval-csv-actions').hidden = showQuestions;
+    if (showQuestions) {
+        $('eval-questions').innerHTML = evalQuestionsHtml();
+        return;
+    }
     const { header, rows } = evalRows(evalResultTab);
     $('eval-table').innerHTML = `<thead><tr>${header.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>`
         + (rows.length ? rows.map(r => `<tr>${r.map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('')
@@ -491,7 +500,7 @@ function evalDetailHtml(t) {
     const sec = (title, body) => `<section class="rp-sec" data-stage="6"><h3>${title}</h3>${body}</section>`;
     const selfRows = list.filter(e => e.kind === 'self').map(e => `<tr><td><b>${escapeHtml(e.evaluator_name)}</b><small class="real">${escapeHtml(roleName(e.evaluator_role))}</small></td>
         ${SELF_ITEMS.map(i => `<td>${starsText(e.answers[i.key])}</td>`).join('')}<td>${fmtAvg(starAverage(e.answers, SELF_ITEMS))}</td></tr>
-        <tr class="sub"><td colspan="${SELF_ITEMS.length + 2}">한계점: ${escapeHtml(e.answers.limit || '-')}<br>귀납과 연역: ${escapeHtml(e.answers.method || '-')}</td></tr>`).join('');
+        <tr class="sub"><td colspan="${SELF_ITEMS.length + 2}">한계점: ${escapeHtml(e.answers.limit || '-')}<br>가설→예측→검증: ${escapeHtml(e.answers.hpv || '-')}</td></tr>`).join('');
     const members = [...new Set([...Object.keys(t.state || {}).filter(k => k.startsWith('member.')).map(k => k.slice(7)),
         ...list.filter(e => e.kind === 'peer').map(e => e.target)])];
     const peerRows = members.map(name => {
@@ -503,7 +512,8 @@ function evalDetailHtml(t) {
     const received = allEvals.filter(e => e.kind === 'team' && e.target === t.id);
     const recvRows = received.map(e => `<tr><td>${escapeHtml(teamLabelById(e.team_id))}<small class="real">${escapeHtml(e.evaluator_name)}</small></td>
         ${TEAM_ITEMS.map(i => `<td>${starsText(e.answers[i.key])}</td>`).join('')}<td class="left">${escapeHtml(e.answers.comment || '-')}</td></tr>`).join('');
-    return `<div class="report-grid">
+    return `<details class="eq-details" data-stage="6"><summary>📝 학생들이 보는 평가 문항 펼쳐 보기</summary>${evalQuestionsHtml()}</details>
+    <div class="report-grid">
         ${sec('🙋 자기평가', `<div class="table-scroll"><table class="rp-table"><thead><tr><th>이름</th>${SELF_ITEMS.map(i => `<th>${i.short}</th>`).join('')}<th>평균</th></tr></thead><tbody>${selfRows || `<tr><td colspan="${SELF_ITEMS.length + 2}" class="muted">아직 없어요</td></tr>`}</tbody></table></div>`)}
         ${sec('🤝 모둠원에게 받은 평가', `<table class="rp-table"><thead><tr><th>이름</th><th>받은 수</th><th>평균</th><th>칭찬 한마디</th></tr></thead><tbody>${peerRows || '<tr><td colspan="4" class="muted">아직 없어요</td></tr>'}</tbody></table>`)}
         ${sec('🎤 다른 모둠에게 받은 발표 평가', `<div class="table-scroll"><table class="rp-table"><thead><tr><th>평가한 모둠·학생</th>${TEAM_ITEMS.map(i => `<th>${i.short}</th>`).join('')}<th>질문·조언</th></tr></thead><tbody>${recvRows || `<tr><td colspan="${TEAM_ITEMS.length + 2}" class="muted">아직 없어요</td></tr>`}</tbody></table></div>`)}

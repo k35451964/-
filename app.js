@@ -1514,16 +1514,17 @@ function setEvalTab(tab) {
 
 function starRow(kind, target, item, extra = '') {
     const v = Number((myEvals[`${kind}|${target}`] || {})[item.key]) || 0;
+    const dis = teacherMode ? ' disabled' : '';
     return `<div class="star-row" data-kind="${kind}" data-target="${escapeHtml(target)}" data-item="${item.key}">
         <span class="star-q">${escapeHtml(item.text)}${extra}</span>
-        <span class="stars">${[1, 2, 3, 4].map(n => `<button type="button" class="star-btn ${n <= v ? 'on' : ''}" data-value="${n}" aria-label="별 ${n}개">★</button>`).join('')}</span>
-        <span class="star-label">${v ? EVAL_SCALE[v - 1] : '아직 안 골랐어요'}</span></div>`;
+        <span class="stars">${[1, 2, 3, 4].map(n => `<button type="button" class="star-btn ${n <= v ? 'on' : ''}" data-value="${n}" aria-label="별 ${n}개"${dis}>★</button>`).join('')}</span>
+        <span class="star-label">${v ? EVAL_SCALE[v - 1] : teacherMode ? '별 1~4개' : '아직 안 골랐어요'}</span></div>`;
 }
 
 function textRow(kind, target, t) {
     const v = (myEvals[`${kind}|${target}`] || {})[t.key] || '';
     return `<label class="field eval-field"><span>${escapeHtml(t.q)}</span>
-        <textarea class="eval-text" rows="2" data-kind="${kind}" data-target="${escapeHtml(target)}" data-item="${t.key}" placeholder="${escapeHtml(t.example)}">${escapeHtml(v)}</textarea></label>`;
+        <textarea class="eval-text" rows="2" data-kind="${kind}" data-target="${escapeHtml(target)}" data-item="${t.key}" placeholder="${escapeHtml(t.example)}"${teacherMode ? ' disabled' : ''}>${escapeHtml(v)}</textarea></label>`;
 }
 
 function evalCard(title, kind, target, items, texts, sub = '') {
@@ -1534,14 +1535,15 @@ function evalCard(title, kind, target, items, texts, sub = '') {
 
 function renderEvaluation() {
     if (!team || viewStage !== 6) return;
+    // 교사 보기 모드: 학생과 같은 평가 문항을 미리 보기로 보여 줌 (작성·저장 안 됨)
     $('eval-teacher-note').hidden = !teacherMode;
-    $('eval-tabs').hidden = teacherMode;
-    $('eval-panel').hidden = teacherMode;
-    $('eval-tab-hint').hidden = teacherMode;
-    if (teacherMode) return;
+    $('eval-status').hidden = teacherMode;
+    $('eval-panel').classList.toggle('preview', teacherMode);
     document.querySelectorAll('.eval-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === evalTab));
     $('eval-tab-hint').textContent = EVAL_HINTS[evalTab];
-    const peers = teamMembers().filter(m => m.name !== me.name);
+    const peers = teacherMode
+        ? (teamMembers().length ? teamMembers() : [{ name: '모둠원 이름', role: '' }])
+        : teamMembers().filter(m => m.name !== me.name);
     const sig = JSON.stringify([evalTab, peers, otherTeams.map(t => t.id), team.id, me.name, Object.keys(myEvals).length]);
     if (sig === evalPanelSig) return;
     if ($('eval-panel').contains(document.activeElement)) return;     // 쓰는 중에는 다시 그리지 않음
@@ -1553,7 +1555,7 @@ function renderEvaluation() {
                 t.theme_id ? `${THEMES[t.theme_id].icon} ${THEMES[t.theme_id].title}` : '')).join('')
             : '<p class="hint center">같은 반의 다른 모둠이 없어요.</p>';
     } else if (evalTab === 'self') {
-        html = evalCard(`🙋 ${escapeHtml(me.name)}의 탐구 돌아보기`, 'self', '', SELF_ITEMS, SELF_TEXTS, roleName(me.role));
+        html = evalCard(`🙋 ${teacherMode ? '(학생 이름)' : escapeHtml(me.name)}의 탐구 돌아보기`, 'self', '', SELF_ITEMS, SELF_TEXTS, teacherMode ? '' : roleName(me.role));
     } else {
         html = peers.length
             ? peers.map(p => evalCard(escapeHtml(p.name), 'peer', p.name, PEER_ITEMS, [PEER_TEXT], roleName(p.role))).join('')
@@ -1603,7 +1605,7 @@ function setEvalStatus(st, detail) {
 
 document.addEventListener('click', e => {
     const btn = e.target.closest('#eval-panel .star-btn');
-    if (!btn) return;
+    if (!btn || teacherMode) return;
     const row = btn.closest('.star-row');
     const v = Number(btn.dataset.value);
     setEval(row.dataset.kind, row.dataset.target, row.dataset.item, v);
@@ -1612,7 +1614,7 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('input', e => {
     const el = e.target.closest('#eval-panel .eval-text');
-    if (el) setEval(el.dataset.kind, el.dataset.target, el.dataset.item, el.value);
+    if (el && !teacherMode) setEval(el.dataset.kind, el.dataset.target, el.dataset.item, el.value);
 });
 
 // ==========================================
