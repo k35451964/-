@@ -455,3 +455,9 @@ textarea { resize: vertical; line-height: 1.5; }
 .step-title { display: flex; align-items: center; gap: 8px; }
 .step-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 15px; }
 #hypothesis-screen .section-title:first-of-type { margin-top: 10px; }
+
+/* 테마 지정 대기 */
+.theme-wait { text-align: center; padding: 20px 0; }
+.theme-wait-icon { font-size: 56px; animation: pop 1.2s infinite alternate; }
+.theme-card.preview { cursor: default; opacity: 0.75; }
+.theme-card.preview:hover { transform: none; border-color: var(--line); box-shadow: none; }

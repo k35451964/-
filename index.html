@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>웹 기반 과학 탐구 프로젝트</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-    <link rel="stylesheet" href="style.css?v=20261103c">
-    <link rel="stylesheet" href="newspaper.css?v=20261103c">
-    <link rel="stylesheet" href="devices.css?v=20261103c">
-    <link rel="stylesheet" href="scenes.css?v=20261103c">
+    <link rel="stylesheet" href="style.css?v=20261103d">
+    <link rel="stylesheet" href="newspaper.css?v=20261103d">
+    <link rel="stylesheet" href="devices.css?v=20261103d">
+    <link rel="stylesheet" href="scenes.css?v=20261103d">
 </head>
 <body>
 
@@ -81,11 +81,14 @@
     </section>
 
     <!-- 테마 선택 -->
+    <!-- 테마는 선생님이 조별로 지정한다 → 지정 전에는 대기 화면 -->
     <section id="theme-screen" class="screen">
-        <h2>탐구할 미스터리를 골라 보자</h2>
-        <p class="lead">모둠에서 한 명이 고르면 모둠원 모두에게 적용된다.</p>
-        <div id="theme-cards" class="theme-cards"></div>
-        <button class="btn btn-ghost" id="theme-back-btn" onclick="goToStage(1)" hidden>← 돌아가기</button>
+        <div class="theme-wait">
+            <div class="theme-wait-icon">⏳</div>
+            <h2>선생님이 우리 모둠의 탐구 테마를 정하는 중이에요</h2>
+            <p class="lead">테마가 정해지면 이 화면이 자동으로 바뀌고 탐구가 시작돼요. 잠시만 기다려 주세요!</p>
+            <div id="theme-preview" class="theme-cards"></div>
+        </div>
     </section>
 
     <!-- 1. 문제 인식 -->
@@ -106,7 +109,6 @@
 
         <p class="role-note" id="story-role-note"></p>
         <div class="action-row">
-            <button class="btn btn-ghost" id="change-theme-btn" onclick="showThemeScreen()">다른 테마 고르기</button>
             <button class="btn btn-primary" id="finish-story-btn" onclick="finishStory()">💡 탐구 문제 파악 완료! 탐구 설계하기</button>
         </div>
     </section>
@@ -416,12 +418,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-<script src="config.js?v=20261103c"></script>
-<script src="themes.js?v=20261103c"></script>
-<script src="common.js?v=20261103c"></script>
-<script src="devices.js?v=20261103c"></script>
-<script src="scenes.js?v=20261103c"></script>
-<script src="ai.js?v=20261103c"></script>
-<script src="app.js?v=20261103c"></script>
+<script src="config.js?v=20261103d"></script>
+<script src="themes.js?v=20261103d"></script>
+<script src="common.js?v=20261103d"></script>
+<script src="devices.js?v=20261103d"></script>
+<script src="scenes.js?v=20261103d"></script>
+<script src="ai.js?v=20261103d"></script>
+<script src="app.js?v=20261103d"></script>
 </body>
 </html>

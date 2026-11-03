@@ -290,7 +290,7 @@ function openTeamView() {
 }
 
 function updateThemeBadge() {
-    $('theme-badge').textContent = team.theme_id ? `${THEMES[team.theme_id].icon} ${THEMES[team.theme_id].title}` : '테마 선택 전';
+    $('theme-badge').textContent = team.theme_id ? `${THEMES[team.theme_id].icon} ${THEMES[team.theme_id].title}` : '테마 지정 전';
 }
 
 // ==========================================
@@ -513,8 +513,8 @@ function onTeamRow(row) {
         team.stage = row.stage;
         state = { ...(row.state || {}) };
         destroyAllCharts();
-        if (!team.theme_id) toast('선생님이 모둠 활동을 초기화했어요. 테마부터 다시 골라 주세요.', 'warn');
-        else toast(`모둠원이 '${THEMES[team.theme_id].title}' 테마를 골랐어요.`);
+        if (!team.theme_id) toast('선생님이 모둠 활동을 초기화했어요. 테마가 다시 정해질 때까지 기다려 주세요.', 'warn');
+        else toast(`🎉 선생님이 '${THEMES[team.theme_id].title}' 테마를 정해 주셨어요!`, 'success');
         openTeamView();
         return;
     }
@@ -676,7 +676,6 @@ function scheduleRefresh() {
 function refreshAll() {
     if (!team || !team.theme_id) return;
     renderStepper();
-    $('change-theme-btn').hidden = !!state['design.submittedAt'] || !!state['theme.assigned'];
     gateButton('finish-story-btn', 'story-role-note', 'story');
     refreshDesign();
     refreshExperiment();
@@ -751,50 +750,15 @@ function finishStory() {
     advance(2);
 }
 
+// 테마가 아직 지정되지 않은 모둠: 선생님이 지정할 때까지 기다린다 (지정되면 실시간으로 시작)
 function showThemeScreen() {
-    if (team.theme_id && state['theme.assigned'] && !teacherMode) {
-        alert('선생님이 정해 준 테마예요. 바꾸려면 선생님께 말씀드리세요.');
-        return;
-    }
-    if (team.theme_id && state['design.submittedAt']) {
-        alert('설계를 이미 전송해서 테마를 바꿀 수 없어요. 바꾸려면 선생님께 초기화를 요청하세요.');
-        return;
-    }
-    $('theme-cards').innerHTML = THEME_ORDER.map(id => {
+    $('theme-preview').innerHTML = THEME_ORDER.map(id => {
         const t = THEMES[id];
-        return `<button class="theme-card ${team.theme_id === id ? 'current' : ''}" onclick="chooseTheme('${id}')">
-            <span class="theme-icon">${t.icon}</span><b>${t.title}</b><small>${t.teaser}</small></button>`;
+        return `<div class="theme-card preview"><span class="theme-icon">${t.icon}</span><b>${t.title}</b><small>${t.teaser}</small></div>`;
     }).join('');
-    $('theme-back-btn').hidden = !team.theme_id;
     viewStage = 0;
     showScreen('theme-screen');
     renderStepper();
-}
-
-async function chooseTheme(id) {
-    if (team.theme_id === id) { goToStage(Math.max(1, team.stage)); return; }
-    const msg = team.theme_id
-        ? `테마를 '${THEMES[id].title}'(으)로 바꿀까요?\n지금까지 입력한 내용이 모두 지워지고, 모둠원 모두에게 적용돼요.`
-        : `'${THEMES[id].title}' 테마로 탐구를 시작할까요?\n모둠원 모두에게 적용돼요.`;
-    if (!confirm(msg)) return;
-    const init = defaultThemeState(id);
-    const { data, error } = await sb.rpc('set_team_theme', { p_team_id: team.id, p_theme_id: id, p_state: init });
-    if (error) {
-        console.error('테마 저장 오류:', error);
-        toast('테마를 저장하지 못했어요. 다시 시도해 주세요.', 'error');
-        return;
-    }
-    if (data === false) {
-        alert('모둠원이 이미 설계를 전송해서 테마를 바꿀 수 없어요.');
-        resync();
-        return;
-    }
-    resetLocalSync();
-    destroyAllCharts();
-    team.theme_id = id;
-    team.stage = 1;
-    state = { ...init };
-    openTeamView();
 }
 
 // 테마가 정해지면 화면의 테마별 부분을 만든다

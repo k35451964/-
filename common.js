@@ -70,7 +70,7 @@ function toast(message, type = 'info', onClick) {
     setTimeout(() => el.remove(), type === 'feedback' ? 9600 : 4100);
 }
 
-// 없어진 테마(예: 예전 백신 테마)는 '테마 선택 전'으로 다룬다
+// 없어진 테마(예: 예전 백신 테마)는 '테마 미지정'으로 다룬다
 function validThemeId(id) {
     return id && THEMES[id] ? id : null;
 }

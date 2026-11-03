@@ -267,7 +267,7 @@ function renderGrid() {
         return `
         <button class="team-card ${recent ? 'pulse' : ''}" onclick="openDetail('${t.id}')">
             <div class="tc-head"><b>${teamLabel(t)}</b><span class="tc-online ${on ? 'on' : ''}">● ${on}명</span></div>
-            <div class="tc-theme">${th ? `${th.icon} ${escapeHtml(th.title)}` : '<span class="muted">테마 선택 전</span>'}</div>
+            <div class="tc-theme">${th ? `${th.icon} ${escapeHtml(th.title)}` : '<span class="tc-unassigned">⚠️ 테마 미지정</span>'}</div>
             <div class="tc-progress">${STAGES.map(st => `<i class="${st.no < stage ? 'done' : st.no === stage ? 'now' : ''}" title="${st.name}"></i>`).join('')}</div>
             <div class="tc-stage">${stage ? `${stage}. ${STAGES[stage - 1].name}` : '입장 대기'}</div>
             <div class="tc-flags">${progressFlags(t).map(([n, ok]) => `<span class="${ok ? 'ok' : ''}">${ok ? '✔' : '○'} ${n}</span>`).join('')}</div>
@@ -303,7 +303,7 @@ function renderDetailMembers() {
 
 function renderThemeSelect(t) {
     const sel = $('detail-theme');
-    sel.innerHTML = '<option value="">테마: 학생이 선택</option>'
+    sel.innerHTML = '<option value="">테마: 미지정</option>'
         + THEME_ORDER.map(id => `<option value="${id}">테마: ${THEMES[id].icon} ${THEMES[id].title}</option>`).join('');
     sel.value = t.theme_id || '';
 }
@@ -330,7 +330,7 @@ async function assignTheme(themeId) {
     Object.assign(t, patch);
     renderDetail(true);
     scheduleRender();
-    toast(themeId ? `${teamLabel(t)}에 '${THEMES[themeId].title}' 테마를 지정했어요.` : `${teamLabel(t)}은(는) 학생이 테마를 고르게 했어요.`, 'success');
+    toast(themeId ? `${teamLabel(t)}에 '${THEMES[themeId].title}' 테마를 지정했어요.` : `${teamLabel(t)}의 테마 지정을 취소했어요.`, 'success');
 }
 
 async function autoAssignThemes() {
@@ -541,7 +541,7 @@ function renderDetail(force = false) {
     const th = t.theme_id ? THEMES[t.theme_id] : null;
     $('detail-team').textContent = teamLabel(t);
     renderThemeSelect(t);
-    $('detail-sub').textContent = th ? `${th.icon} ${th.title} · ${STAGES[Math.max(1, t.stage) - 1].name} 단계` : '테마 선택 전';
+    $('detail-sub').textContent = th ? `${th.icon} ${th.title} · ${STAGES[Math.max(1, t.stage) - 1].name} 단계` : '테마 미지정 (위쪽에서 테마를 정해 주세요)';
 
     const report = $('detail-report');
     const scroll = report.scrollTop;
@@ -872,7 +872,15 @@ async function createTeams() {
     const existing = new Set(teams.filter(t => t.grade === grade && t.class_no === classNo).map(t => t.team_no));
     const rows = [];
     for (let n = 1; n <= count; n++) {
-        if (!existing.has(n)) rows.push({ grade, class_no: classNo, team_no: n });
+        if (!existing.has(n)) {
+            const row = { grade, class_no: classNo, team_no: n };
+            // 테마를 1조부터 차례로 지정 (콜라 → 삼투압 → 자연선택 → 페니실린 → 다시 콜라 …)
+            if ($('new-auto-theme').checked) {
+                const themeId = THEME_ORDER[(n - 1) % THEME_ORDER.length];
+                Object.assign(row, { theme_id: themeId, stage: 1, state: { ...defaultThemeState(themeId), 'theme.assigned': true } });
+            }
+            rows.push(row);
+        }
     }
     if (!rows.length) {
         toast('이미 모든 모둠이 만들어져 있어요.');
