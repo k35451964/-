@@ -20,7 +20,7 @@ const STAGES = [
 // 모둠 역할 (지도안 기준). 각 단계의 제출 버튼은 담당 역할과 연구 책임자만 누를 수 있다.
 const ROLES = [
     { id: 'leader', name: '연구 책임자', duty: '가설, 진행, 발표' },
-    { id: 'historian', name: '사료 분석가', duty: '귀납(규칙 찾기)' },
+    { id: 'historian', name: '사료 분석가', duty: '스토리 분석, 탐구 문제 정하기' },
     { id: 'designer', name: '실험 설계자', duty: '변인 통제, 예측' },
     { id: 'measurer', name: '측정 기술자', duty: '측정, 기록' },
     { id: 'analyst', name: '데이터 분석가', duty: '그래프, 핵심 수치' },

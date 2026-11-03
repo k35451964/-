@@ -1529,7 +1529,7 @@ function textRow(kind, target, t) {
 
 function evalCard(title, kind, target, items, texts, sub = '') {
     return `<div class="eval-card"><div class="eval-card-head"><b>${title}</b>${sub ? `<span class="muted">${sub}</span>` : ''}</div>
-        ${items.map(it => starRow(kind, target, it, it.std ? ` <small class="eval-std">${it.std}</small>` : '')).join('')}
+        ${items.map(it => starRow(kind, target, it, teacherMode && it.std ? ` <small class="eval-std" title="교사 보기 모드에서만 보여요">${it.std}</small>` : '')).join('')}
         ${texts.map(t => textRow(kind, target, t)).join('')}</div>`;
 }
 
