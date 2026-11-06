@@ -693,18 +693,20 @@ function renderStepper() {
     if (!team || !team.theme_id) { nav.hidden = true; return; }
     nav.hidden = false;
     const reachedMax = maxReachableStage();
+    // ✓ 표시는 모둠이 실제로 제출해 넘어간 단계에만 붙인다 (단계 이동은 자유)
+    const isDone = no => no < team.stage || (no === 5 && !!state['newspaper.submittedAt']);
     nav.innerHTML = STAGES.map(s => {
         const reached = teacherMode || s.no <= reachedMax;
-        const cls = [s.no === viewStage ? 'current' : '', s.no < reachedMax ? 'done' : '', reached ? '' : 'locked'].join(' ');
+        const cls = [s.no === viewStage ? 'current' : '', isDone(s.no) ? 'done' : '', reached ? '' : 'locked'].join(' ');
         return `<button class="step ${cls}" ${reached ? `onclick="goToStage(${s.no})"` : 'disabled'}>
-            <span class="step-no">${s.no < reachedMax ? '✓' : s.no}</span><span class="step-name">${s.name}</span></button>`;
+            <span class="step-no">${isDone(s.no) ? '✓' : s.no}</span><span class="step-name">${s.name}</span></button>`;
     }).join('');
 }
 
-// 6단계(평가)는 과학 신문 단계(5)에 들어오면 함께 열린다
+// 위쪽 단계 표시로는 이전 단계를 제출하지 않았어도 모든 단계를 자유롭게 오갈 수 있다
+// (각자 화면만 바뀌고 모둠의 진행 단계는 그대로. '다음 단계' 버튼은 여전히 제출 후에 넘어감)
 function maxReachableStage() {
-    if (teacherMode) return 6;
-    return team.stage >= 5 ? 6 : Math.max(1, team.stage);
+    return 6;
 }
 
 function goToStage(n) {
